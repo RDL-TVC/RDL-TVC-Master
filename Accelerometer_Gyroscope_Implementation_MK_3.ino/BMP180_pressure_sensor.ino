@@ -76,6 +76,8 @@ V1.1.2 Updates for Arduino 1.6.4 5/2015
 // Your sketch must #include this library, and the Wire library.
 // (Wire is a standard library included with Arduino.):
 
+//THIS IS A TEST OF GITHUB
+
 #include <SFE_BMP180.h>
 #include <Wire.h>
 
