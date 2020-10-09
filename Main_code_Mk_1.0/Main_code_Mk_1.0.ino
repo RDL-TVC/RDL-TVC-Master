@@ -1,14 +1,23 @@
 
 const int armingPin = 2; // Place holder pin for the arming button
+const int chuteChargeContOut = 5; // Placeholder Not sure how the continuity of the chute charge will be tested.
+const int chuteCharge1 = 3; // Placeholder
+const int chuteCharge2 = 4; // Placeholder
+const float accelThreshold = 10; // Placeholder
 int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
 
 void setup() {
   // Initializing all Pins
 
   pinMode(armingPin, INPUT);
+  pinMode(chuteCharge1, INPUT);
+  pinMode(chuteCharge2, INPUT);
 
-  // Initializing sensors
+  pinMode(chuteChargeContOut, OUTPUT);
+
+  // Initializing sensors and center equipment
   initializeSensors();
+  initializeServos();
 
 }
 
