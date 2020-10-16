@@ -1,5 +1,4 @@
 
-
 int groundidle() {
   int nextState = 2;
 
