@@ -6,6 +6,15 @@ const int chuteCharge2 = 4; // Placeholder
 const float accelThreshold = 10; // Placeholder
 int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
 
+// PID variables
+double sum;
+double lastError;
+int lastTime;
+
+const double P = 1;
+const double I = .1;
+const double D = .2;
+
 void setup() {
   // Initializing all Pins
 
