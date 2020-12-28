@@ -21,8 +21,10 @@ Adafruit_BMP3XX bmp;
 int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
 
 // PID variables
-double sum;
-double lastError;
+double sumPitch = 0;
+double sumRoll = 0;
+double lastErrorPitch = 0;
+double lastErrorRoll = 0;
 int lastTime;
 
 const double P = 1;
