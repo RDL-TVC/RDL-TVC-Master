@@ -1,9 +1,23 @@
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include "Adafruit_BMP3XX.h"
 
 const int armingPin = 2; // Place holder pin for the arming button
 const int chuteChargeContOut = 5; // Placeholder Not sure how the continuity of the chute charge will be tested.
 const int chuteCharge1 = 3; // Placeholder
 const int chuteCharge2 = 4; // Placeholder
+
+//Defines the pins for I2C for the BMP388 - Placeholder Values
+#define BMP_SCK 13
+#define BMP_MISO 12
+#define BMP_MOSI 11
+#define BMP_CS 10
+
 const float accelThreshold = 10; // Placeholder
+const float seaLevelPressure = 1013.25; //units of hPa, required for pressure altitude
+
+Adafruit_BMP3XX bmp;
+
 int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
 
 // PID variables
@@ -27,6 +41,7 @@ void setup() {
   // Initializing sensors and center equipment
   initializeSensors();
   initializeServos();
+  bmpSetup();
 
 }
 
