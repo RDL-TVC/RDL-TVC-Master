@@ -1,6 +1,8 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
+#include <SD.h>
+#include <SPI.h>
 
 const int armingPin = 2; // Place holder pin for the arming button
 const int chuteChargeContOut = 5; // Placeholder Not sure how the continuity of the chute charge will be tested.
