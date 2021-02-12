@@ -30,10 +30,10 @@ File added by: Evan Grilley
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
 
-#define BMP_SCK 13
-#define BMP_MISO 12
-#define BMP_MOSI 11
-#define BMP_CS 10
+//#define BMP_SCK 19
+//#define BMP_MISO 12
+//#define BMP_MOSI 11
+//#define BMP_CS 17
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 
@@ -48,7 +48,7 @@ void setup() {
   //if (! bmp.begin_SPI(BMP_CS)) {  // hardware SPI mode  
   //if (! bmp.begin_SPI(BMP_CS, BMP_SCK, BMP_MISO, BMP_MOSI)) {  // software SPI mode
     Serial.println("Could not find a valid BMP3 sensor, check wiring!");
-    while (1);
+    //while (1);
   }
 
   // Set up oversampling and filter initialization
@@ -61,7 +61,8 @@ void setup() {
 void loop() {
   if (! bmp.performReading()) {
     Serial.println("Failed to perform reading :(");
-    return;
+    delay(2000);
+    //return;
   }
   Serial.print("Temperature = ");
   Serial.print(bmp.temperature);
