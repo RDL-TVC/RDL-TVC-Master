@@ -61,22 +61,29 @@ int callFLightFunc(int state) {
   Returns the next state of the state machine
   */
   int nextState = state;
-  if (state == 1) {
-    nextState = startup();
-  } else if (state == 2) {
-    nextState = groundidle();
-  } else if (state == 3) {
-    nextState = liftoff();
-  } else if (state == 4) {
-    nextState = burnout();
-  } else if (state == 5) {
-    nextState = freefall();
-   }else if (state == 6) {
-    nextState = chute();
-  } else if (state == 7) {
-    nextState = landing();
-  } else {
-    nextState = failure(); // General failure state might need to specify different failure states.
-  }
-  return nextState;
-  }
+  switch(state) {
+    case 1 :
+      nextState = startup();
+      break;
+    case 2 :
+      nextState = groundidle();
+      break;
+    case 3 :
+      nextState = liftoff();
+      break;
+    case 4 :
+      nextState = burnout();
+      break;
+    case 5 :
+      nextState = freefall();
+      break;
+    case 6 :
+      nextState = chute();
+      break;           
+    case 7 :
+      nextState = landing();
+      break;
+    default : 
+      nextState = failure(); // General failure state might need to specify different failure states.
+  } return nextState;
+}
