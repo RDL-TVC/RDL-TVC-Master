@@ -3,7 +3,7 @@ int burnout(){
   int nextState = 4;
 
   float alts = altSensor.getAlt();
-  int orient = orientation();
+  float orient = orientation();
 
   currentAlt = alts[0];
   lastAlt = alts[1];
