@@ -2,16 +2,6 @@
  * returns 1 if runs/successful, 0 if sensor not found (currently excempting mosfets, buzzer, and servos)
  * TODO: Organize libraries and put sensor variables/names to proper places
  */
-#include <Wire.h>
-#include <SPI.h>
-#include <Adafruit_Sensor.h>
-#include "Adafruit_BMP3XX.h"
-#include <Adafruit_BNO055.h>
-#include <utility/imumaths.h>
-#include <Adafruit_INA260.h>
-#include <Servo.h>
-#include <SD.h>
-
 
  //Bmp388
 Adafruit_BMP3XX bmp;
