@@ -2,10 +2,13 @@
 int chute(){
   int nextState = 6;
 
-  array alt = altitude();
-  array orient = orientation();
+  float alts = altSensor.getAlt();
+  int orient = orientation();
+
+  currentAlt = alts[0];
+  lastAlt = alts[1];
   
-  datalog(alt, orient);
+  dataLog.logData(alt,orient);
 
   if (orient[2] >= lastAccel){
     nextState = 0; //Placeholder for failure state if parachutes do not deploy

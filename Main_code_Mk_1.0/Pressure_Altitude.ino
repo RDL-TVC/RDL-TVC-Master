@@ -8,7 +8,7 @@ class altitudeSensor{
 
   public:
     //contructor for the class
-    void altitude()
+    void altitudeSensor()
     {
       lastAlt = 0;
     }
@@ -19,7 +19,8 @@ class altitudeSensor{
         strLog.logString("Error: bmp388 could not perform reading");
         return 0;
       }
-      return bmp.readAltitude(seaLevelPressure);
+      float alts[] = {bmp.readAltitude(seaLevelPressure),lastAlt};
+      return alts;
       
     }
 }

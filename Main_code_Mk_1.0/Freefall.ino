@@ -4,10 +4,13 @@ int freefall(){
 
   chuteDeployAltitude = 1; //TODO: Determine threshold altitude for deploying parachutes
   
-  array alt = altitude();
-  array orient = orientation();
+  float alts = altSensor.getAlt();
+  int orient = orientation();
+
+  currentAlt = alts[0];
+  lastAlt = alts[1];
   
-  datalog(alt, orient);
+  dataLog.logData(alt,orient);
 
   if (alt <= chuteDeployAltitude){
     nextState = 6;

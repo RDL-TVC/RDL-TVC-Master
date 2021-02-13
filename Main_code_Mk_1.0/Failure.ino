@@ -1,7 +1,5 @@
 
-int burnout(){
-  int nextState = 4;
-
+void failure() {
   float alts = altSensor.getAlt();
   int orient = orientation();
 
@@ -9,10 +7,4 @@ int burnout(){
   lastAlt = alts[1];
   
   dataLog.logData(alt,orient);
-
-  if (alt < lastAlt){
-    nextState = 5;
-  }
-
-  return nextState;
 }

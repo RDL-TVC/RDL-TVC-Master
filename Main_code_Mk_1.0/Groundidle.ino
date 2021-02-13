@@ -2,10 +2,13 @@
 int groundidle() {
   int nextState = 2;
 
-  array alt = altitude();
-  array orient = orientation();
+  float alts = altSensor.getAlt();
+  int orient = orientation();
+
+  currentAlt = alts[0];
+  lastAlt = alts[1];
   
-  datalog(alt, orient);
+  dataLog.logData(alt,orient);
   
   if (orient[2] >= accelThreshold) { // TODO: placeholder values that need to be changed once data format has been determined.
     nextState = 3;
