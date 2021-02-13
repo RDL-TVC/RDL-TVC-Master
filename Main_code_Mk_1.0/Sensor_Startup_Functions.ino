@@ -4,13 +4,10 @@
  */
 
  //Bmp388
-Adafruit_BMP3XX bmp;
-
-int bmp388Setup(){
+void bmpSetup(){
   if (!bmp.begin_I2C()) {
     //error - could not find sensor
-    Serial.println("Error: could not find bmp388 sensor");
-    return 0;  
+    strLog.logString("Error: could not find bmp388 sensor")  
   }
 
   // Set up oversampling and filder initialization - Placeholder values
@@ -18,14 +15,11 @@ int bmp388Setup(){
   bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
   bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   bmp.setOutputDataRate(BMP3_ODR_50_HZ);
-
-  return 1;
+  //return 1;
 }
   
 //Bno055
-Adafruit_BNO055 bno = Adafruit_BNO055(55);
-
-int bnoSetup() {
+void bnoSetup() {
  
   Serial.println("Orientation Sensor Test"); Serial.println("");
   
@@ -35,18 +29,16 @@ int bnoSetup() {
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
     while(1);
-    return 0;
+    //return 0;
   } 
 
   delay(1000);
   bno.setExtCrystalUse(true);
-  return 1;
+  //return 1;
 }
 
 //Ina260
-Adafruit_INA260 ina260 = Adafruit_INA260();
- 
-int inaSetup() {
+void inaSetup() {
   // Wait until serial port is opened
   while (!Serial) { delay(10); 
   }
@@ -56,36 +48,28 @@ int inaSetup() {
   if (!ina260.begin()) {
     Serial.println("Couldn't find INA260 chip");
     while (1);
-    return 0;
+    //return 0;
   }
   Serial.println("Found INA260 chip");
-  return 1;
+  //return 1;
 }
 
 //Mosfet & buzzer
-int mosfetAndBuzzerSetup(){
+void miscSetup() {
   pinMode(4, OUTPUT);
   pinMode(5, OUTPUT);
   //int piezoBuzzerPin = 14;
-  return 1;
+  //return 1;
 }
 
 //Servos
-#define SERVO_PIN_LR 0
-#define SERVO_PIN_FB 1
-
-Servo servo_LR;
-Servo servo_FB;
-
-int servosSetup() {
+int servoSetup() {
   servo_LR.attach(SERVO_PIN_LR);
   servo_FB.attach(SERVO_PIN_FB);
 }
 
 //SD card
-const int chipSelect = BUILTIN_SDCARD;
-
-int SDSetup()
+void SDSetup()
 {
  // Open serial communications and wait for port to open:
    while (!Serial) {
@@ -98,8 +82,8 @@ int SDSetup()
   if (!SD.begin(chipSelect)) {
     Serial.println("Card failed, or not present");
     // don't do anything more:
-    return 0;
+    //return 0;
   }
   Serial.println("card initialized.");
-  return 1;
+  //return 1;
 }

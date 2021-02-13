@@ -8,6 +8,9 @@
 #include <Servo.h>
 #include <SD.h>
 
+#define SERVO_PIN_LR 0
+#define SERVO_PIN_FB 1
+
 const int armingPin = 2; // Place holder pin for the arming button
 const int chuteChargeContOut = 5; // Placeholder Not sure how the continuity of the chute charge will be tested.
 const int chuteCharge1 = 3; // Placeholder
@@ -16,7 +19,13 @@ const int chuteCharge2 = 4; // Placeholder
 const float accelThreshold = 10; // Placeholder
 const float seaLevelPressure = 1013.25; //units of hPa, required for pressure altitude
 
+const int chipSelect = BUILTIN_SDCARD;
+
 Adafruit_BMP3XX bmp;
+Adafruit_BNO055 bno = Adafruit_BNO055(55);
+Adafruit_INA260 ina260 = Adafruit_INA260();
+Servo servo_LR;
+Servo servo_FB;
 
 int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
 
@@ -43,7 +52,13 @@ void setup() {
   Serial.begin(115200);
 
   // Initializing sensors and center equipment
+  SDSetup();
+  inaSetup();
   bmpSetup();
+  bnoSetup();
+  servoSetup();
+  miscSetup();
+  
 
 }
 
