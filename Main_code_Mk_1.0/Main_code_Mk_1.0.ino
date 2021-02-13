@@ -9,12 +9,6 @@ const int chuteChargeContOut = 5; // Placeholder Not sure how the continuity of 
 const int chuteCharge1 = 3; // Placeholder
 const int chuteCharge2 = 4; // Placeholder
 
-//Defines the pins for I2C for the BMP388 - Placeholder Values
-#define BMP_SCK 13
-#define BMP_MISO 12
-#define BMP_MOSI 11
-#define BMP_CS 10
-
 const float accelThreshold = 10; // Placeholder
 const float seaLevelPressure = 1013.25; //units of hPa, required for pressure altitude
 
