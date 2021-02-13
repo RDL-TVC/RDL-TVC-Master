@@ -45,8 +45,8 @@ void loop(void)
   
   /* Display the floating point data of degrees*/
   orient[1] = euler.x();
-  orient[2] = euler.y();
-  orient[3] = euler.z();
+  orient[3] = euler.y(); 
+  orient[2] = euler.z(); 
   Serial.printf("degX:%5.2f",orient[1]);
   Serial.printf("   degY:%5.2f",orient[2]);
   Serial.printf("   degZ:%5.2f",orient[3]);
@@ -63,10 +63,7 @@ void loop(void)
    if(orient[2] > 5 || orient[2] < -5) //if y > 5deg magnitude
   {
     y = orient[2];
-    if (y < 0)
-      servo_FB.write(360-y);
-    else 
-      servo_FB.write(y);
+    servo_FB.write(90-y);
     Serial.printf("ServoY:%5.2f", y);
   }
 
