@@ -2,13 +2,18 @@
  * returns 1 if runs/successful, 0 if sensor not found (currently excempting mosfets, buzzer, and servos)
  * TODO: Organize libraries and put sensor variables/names to proper places
  */
-
- //Bmp388
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
+#include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
+#include <Adafruit_INA260.h>
+#include <Servo.h>
+#include <SD.h>
 
+
+ //Bmp388
 Adafruit_BMP3XX bmp;
 
 int bmp388Setup(){
@@ -26,11 +31,8 @@ int bmp388Setup(){
 
   return 1;
 }
-  //Bno055
-//#include <Adafruit_Sensor.h>
-#include <Adafruit_BNO055.h>
-#include <utility/imumaths.h>
-
+  
+//Bno055
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
 int bnoSetup() {
@@ -53,8 +55,6 @@ int bnoSetup() {
 }
 
 //Ina260
-#include <Adafruit_INA260.h>
- 
 Adafruit_INA260 ina260 = Adafruit_INA260();
  
 int inaSetup() {
@@ -83,8 +83,6 @@ int mosfetAndBuzzerSetup(){
 }
 
 //Servos
-#include <Servo.h>
-
 #define SERVO_PIN_LR 0
 #define SERVO_PIN_FB 1
 
@@ -99,13 +97,10 @@ int servosSetup() {
 }
 
 //SD card
-#include <SD.h>
-#include <SPI.h>
-
 const int chipSelect = BUILTIN_SDCARD;
 
-int SDSetup(){
-
+int SDSetup()
+{
  // Open serial communications and wait for port to open:
   Serial.begin(9600);
    while (!Serial) {

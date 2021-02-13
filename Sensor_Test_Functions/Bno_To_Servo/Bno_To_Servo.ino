@@ -52,7 +52,7 @@ void loop(void)
   Serial.printf("   degZ:%5.2f",orient[3]);
   Serial.print("      ");
 
-  if(orient[1] > 5 || orient[1] < -5) //if x > 5deg magnitude
+  if(orient[1] < 5 || orient[1] > -5) //if x < 5deg magnitude
   {
     x = orient[1];
     servo_LR.write(x);
@@ -60,7 +60,7 @@ void loop(void)
     Serial.print("     ");
   }
 
-   if(orient[2] > 5 || orient[2] < -5) //if y > 5deg magnitude
+   if(orient[2] < 5 || orient[2] > -5) //if y < 5deg magnitude
   {
     y = orient[2];
     servo_FB.write(90-y);
