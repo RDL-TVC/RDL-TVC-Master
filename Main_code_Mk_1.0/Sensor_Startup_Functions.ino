@@ -26,8 +26,7 @@ int bmp388Setup(){
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
 int bnoSetup() {
-  
-  Serial.begin(9600);
+ 
   Serial.println("Orientation Sensor Test"); Serial.println("");
   
   /* Initialise the sensor */
@@ -48,7 +47,6 @@ int bnoSetup() {
 Adafruit_INA260 ina260 = Adafruit_INA260();
  
 int inaSetup() {
-  Serial.begin(115200);
   // Wait until serial port is opened
   while (!Serial) { delay(10); 
   }
@@ -79,8 +77,6 @@ int mosfetAndBuzzerSetup(){
 Servo servo_LR;
 Servo servo_FB;
 
-int i = 0;
-
 int servosSetup() {
   servo_LR.attach(SERVO_PIN_LR);
   servo_FB.attach(SERVO_PIN_FB);
@@ -92,7 +88,6 @@ const int chipSelect = BUILTIN_SDCARD;
 int SDSetup()
 {
  // Open serial communications and wait for port to open:
-  Serial.begin(9600);
    while (!Serial) {
     ; // wait for serial port to connect.
   }

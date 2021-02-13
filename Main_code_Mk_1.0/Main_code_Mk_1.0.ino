@@ -40,9 +40,9 @@ void setup() {
 
   pinMode(chuteChargeContOut, OUTPUT);
 
+  Serial.begin(115200);
+
   // Initializing sensors and center equipment
-  initializeSensors();
-  initializeServos();
   bmpSetup();
 
 }
