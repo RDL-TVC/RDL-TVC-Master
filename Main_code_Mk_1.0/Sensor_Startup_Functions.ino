@@ -21,13 +21,11 @@ void bmpSetup(){
 //Bno055
 void bnoSetup() {
  
-  Serial.println("Orientation Sensor Test"); Serial.println("");
-  
-  /* Initialise the sensor */
+    /* Initialise the sensor */
   if(!bno.begin())
   {
     /* There was a problem detecting the BNO055 ... check your connections */
-    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    strLog.logString("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
     while(1);
     //return 0;
   } 
@@ -46,11 +44,11 @@ void inaSetup() {
   Serial.println("Adafruit INA260 Test");
  
   if (!ina260.begin()) {
-    Serial.println("Couldn't find INA260 chip");
+    strLog.logString("Couldn't find INA260 chip");
     while (1);
     //return 0;
   }
-  Serial.println("Found INA260 chip");
+  strLog.logString("Found INA260 chip");
   //return 1;
 }
 
