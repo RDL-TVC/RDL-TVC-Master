@@ -8,12 +8,12 @@ class altitudeSensor{
 
   public:
     //contructor for the class
-    void altitudeSensor()
+    altitudeSensor()
     {
       lastAlt = 0;
     }
 
-    float getAlt(){
+    float* getAlt(){
       if (! bmp.performReading()) {
         //error - could not perform reading
         strLog.logString("Error: bmp388 could not perform reading");
@@ -23,8 +23,8 @@ class altitudeSensor{
       return alts;
       
     }
-}
+};
 
 //creating the altitudeSensor to be used in the code
 //reference using altSensor.getAlt()
-altitudeSensor altSensor();
+altitudeSensor altSensor;

@@ -7,7 +7,7 @@
 void bmpSetup(){
   if (!bmp.begin_I2C()) {
     //error - could not find sensor
-    strLog.logString("Error: could not find bmp388 sensor")  
+    strLog.logString("Error: could not find bmp388 sensor");  
   }
 
   // Set up oversampling and filder initialization - Placeholder values

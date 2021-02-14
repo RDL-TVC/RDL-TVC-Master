@@ -1,3 +1,6 @@
+#include "Log_Functions.h"
+#include "Pressure_Altitude.h"
+
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
@@ -99,4 +102,125 @@ int callFLightFunc(int state) {
     default : 
       nextState = failure(); // General failure state might need to specify different failure states.
   } return nextState;
+}
+
+int startup() {
+  int nextState = 1;
+  digitalWrite(chuteChargeContOut, HIGH);
+  int charge1 = digitalRead(chuteCharge1);
+  int charge2 = digitalRead(chuteCharge2); 
+  digitalWrite(chuteChargeContOut, LOW);
+  int armed = digitalRead(armingPin);
+
+  if ((not charge1) or (not charge2)){
+    nextState - 0; // Placeholder for failure state at least one of the chute charges is not connected
+  } else if (armed) {
+    nextState = 2;
+  }
+  return nextState;
+}
+
+int groundidle() {
+  int nextState = 2;
+
+  float* alts = altSensor.getAlt();
+  float* orient = orientation();
+
+  currentAlt = alts[0];
+  lastAlt = alts[1];
+  
+  dataLog.logData(alt,orient);
+  
+  if (orient[2] >= accelThreshold) { // TODO: placeholder values that need to be changed once data format has been determined.
+    nextState = 3;
+    initPID();
+    unlockServos();
+  }
+  return nextState;
+}
+
+int liftoff() {
+  int nextState = 2;
+  
+  return nextState;
+}
+
+int burnout(){
+  int nextState = 4;
+
+  float* alts = altSensor.getAlt();
+  float* orient = orientation();
+  
+  currentAlt = alts[0];
+  lastAlt = alts[1];
+  
+  dataLog.logData(alt,orient);
+
+  if (alt < lastAlt){
+    nextState = 5;
+  }
+
+  return nextState;
+}
+
+int freefall(){
+  int nextState = 5;
+
+  chuteDeployAltitude = 1; //TODO: Determine threshold altitude for deploying parachutes
+  
+  float* alts = altSensor.getAlt();
+  float* orient = orientation();
+
+  currentAlt = alts[0];
+  lastAlt = alts[1];
+  
+  dataLog.logData(alt,orient);
+
+  if (alt <= chuteDeployAltitude){
+    nextState = 6;
+    deployChutes()
+  }
+
+  return nextState;
+}
+
+int chute(){
+  int nextState = 6;
+
+  float* alts = altSensor.getAlt();
+  float* orient = orientation();
+
+  currentAlt = alts[0];
+  lastAlt = alts[1];
+  
+  dataLog.logData(alt,orient);
+
+  if (orient[2] >= lastAccel){
+    nextState = 0; //Placeholder for failure state if parachutes do not deploy
+  }else if (alt >= lastAlt){
+    nextState = 7;
+  }
+
+  lastAccel = orient[2];
+
+  return nextState;
+}
+
+int landing(){
+  int nextState = 7;
+
+  writeToSD(); //Under current conditions, this will run in a loop indefitely. Either the main loop should stop after landing or the write function call should be called at the end of chute().
+
+  return nextState;
+}
+
+int failure() {
+  float* alts = altSensor.getAlt();
+  float* orient = orientation();
+  
+  currentAlt = alts[0];
+  lastAlt = alts[1];
+  
+  dataLog.logData(alt,orient);
+  return 0;
 }
