@@ -1,3 +1,4 @@
+#include <SD.h>
 //classes for handling logs and saving to an SD card
 //Evan Grilley - 1/12/2021
 class stringLog {
@@ -23,7 +24,7 @@ class stringLog {
     void saveToSD()
     {
       //SD should be initialized earlier from the main function
-      File* strLogFile = SD.open("strLog.txt", FILE_WRITE);
+      File strLogFile = SD.open("strLog.txt", FILE_WRITE);
 
       strLogFile.println("Time(ms), Message,");
       
@@ -65,7 +66,7 @@ class altOrientLog {
     void saveToSD()
     {
       //SD should be initialized earlier from the main function
-      File* dataLogFile = SD.open("dataLog.txt", FILE_WRITE);
+      File dataLogFile = SD.open("dataLog.txt", FILE_WRITE);
 
       dataLogFile.println("Time(ms), Altitude(m), Orientation,");
       

@@ -1,11 +1,13 @@
 //Function runs during the setup function on the main file. Initiliazes the BMP388
 //Evan Grilley - 12/28/2020
 
+#include "Adafruit_BMP3XX.h"
 //Modified such that altitude is now a class, and the previous altitude function is contained and renamed to getAlt().
 //This is so the method can access the previous altitude without needing to create a global variable
 class altitudeSensor{
   float lastAlt;
-
+  Adafruit_BMP3XX bmp;
+  
   public:
     //contructor for the class
     altitudeSensor()
@@ -19,7 +21,7 @@ class altitudeSensor{
         strLog.logString("Error: bmp388 could not perform reading");
         return 0;
       }
-      float alts[] = {bmp.readAltitude(seaLevelPressure),lastAlt};
+      float alts[] = {bmp.readAltitude(1013.25),lastAlt};
       return alts;
       
     }

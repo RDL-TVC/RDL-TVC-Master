@@ -31,6 +31,8 @@ Servo servo_LR;
 Servo servo_FB;
 
 int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
+  float currentAlt;
+  float lastAlt;
 
 // PID variables
 double sumPitch = 0;
