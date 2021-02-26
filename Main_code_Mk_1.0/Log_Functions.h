@@ -1,8 +1,10 @@
+#include <SD.h>
 //classes for handling logs and saving to an SD card
 //Evan Grilley - 1/12/2021
 class stringLog {
+  #define LOGLEN 400
   int logLen = 400; //This value should be changed to a maximum value of messages expected to be recieved
-  String messages[2][logLen];
+  String messages[2][LOGLEN];
   int currentIndex = 0;
 
   public:
@@ -27,24 +29,24 @@ class stringLog {
       strLogFile.println("Time(ms), Message,");
       
       //write messages to file, ex: 1234, test message,
-      for(int i = 0: i <=logLen-1; i++) {
+      for(int i = 0; i <=logLen-1; i++) {
         strLogFile.print(messages[1][i]);
         strLogFile.print(", ");
         strLogFile.print(messages[2][i]);
-        strLogFile.println(",")
+        strLogFile.println(",");
       }
       
       strLogFile.close();
     }
-}
+};
 
 //creating the log to be used in the code
 //reference using strLog.logString(message) and strLog.saveToSD()
-stringLog strLog();
+stringLog strLog;
 
 class altOrientLog {
   int logLen = 4000; //This value should be changed to a maximum value of messages expected to be recieved
-  float data[3][logLen];
+  float data[3][LOGLEN];
   int currentIndex = 0;
 
   public:
@@ -66,22 +68,22 @@ class altOrientLog {
       //SD should be initialized earlier from the main function
       File dataLogFile = SD.open("dataLog.txt", FILE_WRITE);
 
-      strLogFile.println("Time(ms), Altitude(m), Orientation,");
+      dataLogFile.println("Time(ms), Altitude(m), Orientation,");
       
       //write messages to file, ex: 1234, 80, 20,
-      for(int i = 0: i <=logLen-1; i++) {
-        strLogFile.print(data[1][i]);
-        strLogFile.print(", ");
-        strLogFile.print(data[2][i]);
-        strLogFile.print(", ");
-        strLogFile.print(data[3][i]);
-        strLogFile.println(",")
+      for(int i = 0; i <=logLen-1; i++) {
+        dataLogFile.print(data[1][i]);
+        dataLogFile.print(", ");
+        dataLogFile.print(data[2][i]);
+        dataLogFile.print(", ");
+        dataLogFile.print(data[3][i]);
+        dataLogFile.println(",");
       }
       
-      strLogFile.close();
+      dataLogFile.close();
     }
-}
+};
 
 //creating the log to be used in the code
 //reference using dataLog.logData(alt,orient) and dataLog.saveToSD()
-altOrientLog dataLog();
+altOrientLog dataLog;
