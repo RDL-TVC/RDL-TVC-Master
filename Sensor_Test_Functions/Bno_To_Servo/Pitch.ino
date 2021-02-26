@@ -4,6 +4,7 @@ float pitchLast;
 float pitchCur;
 float pitchAcc;
 float dPitch;
+elapsedMillis dTime;
 
 float getPItch() {
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
@@ -26,4 +27,18 @@ float getPItch() {
 
   //Quadrant 4: +pitchRate, +dPitch, -pitchCur OR -pitchRate, -dPitch, -pitchCur
   pitchAcc = pitchAcc + dPitch;
+
+  return pitchAcc;
+}
+
+float gyroPitchInt() {
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+
+  float deltaTime = dTime;
+  dTime = 0;
+  pitchRate = gyro.y();
+  pitchAcc += pitchRate * deltaTime;
+  return pitchAcc/PI*180;
+
 }
