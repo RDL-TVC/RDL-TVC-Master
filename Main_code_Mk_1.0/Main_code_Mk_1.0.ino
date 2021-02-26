@@ -64,7 +64,6 @@ void setup() {
   servoSetup();
   miscSetup();
   
-
 }
 
 void loop() {
@@ -131,12 +130,12 @@ int groundidle() {
   currentAlt = alts[0];
   lastAlt = alts[1];
   
-  dataLog.logData(alt,orient);
+  dataLog.logData(alts,orient);
   
   if (orient[2] >= accelThreshold) { // TODO: placeholder values that need to be changed once data format has been determined.
     nextState = 3;
-    initPID();
-    unlockServos();
+    //initPID();
+    //unlockServos();
   }
   return nextState;
 }
@@ -156,7 +155,7 @@ int burnout(){
   currentAlt = alts[0];
   lastAlt = alts[1];
   
-  dataLog.logData(alt,orient);
+  dataLog.logData(alts,orient);
 
   if (alt < lastAlt){
     nextState = 5;
@@ -168,7 +167,7 @@ int burnout(){
 int freefall(){
   int nextState = 5;
 
-  chuteDeployAltitude = 1; //TODO: Determine threshold altitude for deploying parachutes
+  //chuteDeployAltitude = 1; //TODO: Determine threshold altitude for deploying parachutes
   
   float* alts = altSensor.getAlt();
   float* orient = orientation();
@@ -176,11 +175,11 @@ int freefall(){
   currentAlt = alts[0];
   lastAlt = alts[1];
   
-  dataLog.logData(alt,orient);
+  dataLog.logData(alts,orient);
 
   if (alt <= chuteDeployAltitude){
     nextState = 6;
-    deployChutes()
+    //deployChutes()
   }
 
   return nextState;
@@ -194,8 +193,10 @@ int chute(){
 
   currentAlt = alts[0];
   lastAlt = alts[1];
+
+  float lastAccel = 0; //placeholder
   
-  dataLog.logData(alt,orient);
+  dataLog.logData(alts,orient);
 
   if (orient[2] >= lastAccel){
     nextState = 0; //Placeholder for failure state if parachutes do not deploy
@@ -223,6 +224,6 @@ int failure() {
   currentAlt = alts[0];
   lastAlt = alts[1];
   
-  dataLog.logData(alt,orient);
+  dataLog.logData(alts,orient);
   return 0;
 }
