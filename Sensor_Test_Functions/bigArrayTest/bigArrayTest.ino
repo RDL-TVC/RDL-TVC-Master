@@ -1,6 +1,7 @@
 #include <Wire.h>
 
-#define SIZE 10000
+//120000 * 4 ints max on flash1 or flash2
+#define SIZE 120000
 DMAMEM int bigArray[SIZE];
 
 void setup() {
