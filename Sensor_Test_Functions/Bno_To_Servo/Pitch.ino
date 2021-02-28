@@ -17,17 +17,22 @@ float getPItch() {
   //pitchAcc = pitchAcc + dPitch;
 
   //Quadrant 1: +pitchRate, +dPitch, +pitchCur OR -pitchRate, -dPitch, +pitchCur
-  pitchAcc = pitchAcc + dPitch;
-  
+  if ((pitchRate >= 0 && dPitch >= 0 && pitchCur >= 0) || (pitchRate <= 0 && dPitch <= 0 && pitchCur >= 0)) {
+    pitchAcc = pitchAcc + dPitch;
+  }
   //Quadrant 2: +pitchRate, -dPitch, +pitchCur OR -pitchRate, +dPitch, +pitchCur
-  pitchAcc = pitchAcc - dPitch;
-  
+  else if ((pitchRate >= 0 && dPitch <= 0 && pitchCur >= 0) || (pitchRate <= 0 && dPitch >= 0 && pitchCur >= 0)) {
+    pitchAcc = pitchAcc - dPitch;
+  }
   //Quadrant 3: +pitchRate, -dPitch, -pitchCur OR -pitchRate, +dPitch, -pitchCur
-  pitchAcc = pitchAcc - dPitch;
-
+  else if ((pitchRate >= 0 && dPitch <= 0 && pitchCur <= 0) || (pitchRate <= 0 && dPitch >= 0 && pitchCur >= 0)) {
+    pitchAcc = pitchAcc - dPitch;
+  }
   //Quadrant 4: +pitchRate, +dPitch, -pitchCur OR -pitchRate, -dPitch, -pitchCur
-  pitchAcc = pitchAcc + dPitch;
-
+  else if ((pitchRate >= 0 && dPitch >= 0 && pitchCur <= 0) || (pitchRate <= 0 && dPitch <= 0 && pitchCur <= 0)) {
+    pitchAcc = pitchAcc + dPitch;
+  }
+  
   return pitchAcc;
 }
 
@@ -38,7 +43,13 @@ float gyroPitchInt() {
   float deltaTime = dTime;
   dTime = 0;
   pitchRate = gyro.y();
-  pitchAcc += pitchRate * deltaTime;
-  return pitchAcc/PI*180;
+  pitchAcc += pitchRate * deltaTime/1000;
+  pitchAcc = pitchAcc/PI*180;
+  
+//compare to euler.y() so that when pitchRead == 0, pitchAcc % 180 == 0 or close
+  //float rotationNum = pitchAcc/360;
+  //float drift = (pitchAcc - rotationNum * 360) % euler.y();
+  //pitchAcc -= drift; 
+  return pitchAcc;
 
 }

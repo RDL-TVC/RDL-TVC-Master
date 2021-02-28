@@ -28,7 +28,6 @@ void setup(void)
   servo_yaw.writeMicroseconds(1500);
   
   Serial.begin(9600);
-  Serial.println("Orientation Sensor Test"); Serial.println("");
   /* Initialise the sensor */
   if(!bno.begin())
   {
@@ -46,6 +45,8 @@ void loop(void)
   /* Angle data */
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+  //imu::Vector<3> mag = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+  imu::Quaternion quat = bno.getQuat();
   
   /* Display the floating point data of degrees*/
   orient_last[0] = orient_cur[0];
@@ -57,74 +58,36 @@ void loop(void)
   orient_cur[2] = euler.x(); //Yaw 0 >> 360
   
   //Roll -infinity >> infinity
-  if (orient_cur[0] <= -160 && orient_last[0] >= 160)
-  {
+  if (orient_cur[0] <= -160 && orient_last[0] >= 160){
     orient[1] = orient[1] + (orient_cur[0] + 360 - orient_last[0]);
-  }
-  else if (orient_cur[0] >= 160 && orient_last[0] <= -160) 
-  {
+  } else if (orient_cur[0] >= 160 && orient_last[0] <= -160) {
     orient[1] = orient[1] + (orient_cur[0] - 360 - orient_last[0]);
-  }
-  else  
-  {
+  } else { 
     orient[1] = orient[1] + (orient_cur[0] - orient_last[0]);
   }
-
-  //Pitch -infinity >> infinity
-
+  Serial.printf("Roll:%5.2f",orient[1]);
+  
   //Yaw -infinity >> infinity
-  if (orient_cur[2] >= 340 && orient_last[2] <= 20)
-  {
+  if (orient_cur[2] >= 340 && orient_last[2] <= 20) {
     orient[3] = orient[3] + (orient_cur[2] - 360 - orient_last[2]);
-  }
-  else if (orient_cur[2] <= 20 && orient_last[2] >= 340) 
-  {
+  } else if (orient_cur[2] <= 20 && orient_last[2] >= 340) {
     orient[3] = orient[3] + (orient_cur[2] + 360 - orient_last[2]);
-  }
-  else  
-  {
+  } else { 
     orient[3] = orient[3] + (orient_cur[2] - orient_last[2]);
   }
-    
-  orient[2] = orient[2] + (orient_cur[1] - orient_last[1]);
+  Serial.printf("   Yaw:%5.2f", orient[3]);
   
+  //Pitch -infinity >> infinity
+/* 
+  Serial.printf("   Pitch:%f", orient[2]);
+  Serial.print("      ");
+  Serial.printf("   Pitch Rad/s :%f", gyro.y());
+  Serial.printf("   ServoPitch:%f", gyroPitchInt());
+  float drift = pitchAcc % euler.y();
+  Serial.printf("   ServoPitchCorrected:%f", getPItch());
+*/
+
   
-Serial.printf("Roll:%5.2f",orient[1]);
-  Serial.printf("   Pitch:%5.2f",orient[2]);
-  Serial.printf("   Yaw:%5.2f",orient[3]);
-  Serial.print("      ");
-  Serial.printf("   Pitch Rad/s :%5.2f",gyro.y());
-  Serial.print("      ");
-
-//  if(orient[2] < 90 || orient[2] > 270) //if Pitch < 90deg magnitude
-//  {
-//    pitch = orient[2];
-//    servo_pitch.write(pitch);
-//    Serial.printf("ServoPitch:%5.2f", pitch);
-//    Serial.print("     ");
-//  }
-
-  if(orient[2] <= 90 && orient[2] >= -90)
-  {
-    pitch = map(orient[2], -90, 90, 1200, 1800);
-    servo_pitch.writeMicroseconds(pitch);
-  }
-
-//  if(orient[3] <= 90 && orient[3] >= -90)
-//  {
-//    yaw = map(orient[3], , 90, 1200, 1800);
-//    servo_pitch.writeMicroseconds(yaw);
-//  }
-
-//   if(orient[3] < 90 || orient[3] > 270) //if Yaw < 45deg magnitude
-//  {
-//    
-//    
-//    yaw = orient[3];
-//    servo_yaw.write(yaw);
-//    Serial.printf("ServoYaw:%5.2f", yaw);
-//  }
-
   Serial.printf("\n");
 
 }
