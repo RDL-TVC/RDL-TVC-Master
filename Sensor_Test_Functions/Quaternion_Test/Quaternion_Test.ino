@@ -38,6 +38,34 @@ void setup(void)
   orient[0] = 1;
   delay(1000);   
   bno.setExtCrystalUse(true);
+
+  
+  uint8_t cal, gyro, accel, mag = 0;
+  bno.getCalibration(&cal, &gyro, &accel, &mag);
+
+  Serial.print("Calibrating BNO055  ");
+  Serial.print(cal);
+  Serial.print("  ");
+  Serial.print(gyro);
+  Serial.print("  ");
+  Serial.print(accel);
+  Serial.print("  ");
+  Serial.println(mag);
+
+  while(cal != 3)
+  {
+    bno.getCalibration(&cal, &gyro, &accel, &mag);
+    Serial.print("Calibrating BNO055  ");
+    Serial.print(cal);
+    Serial.print("  ");
+    Serial.print(gyro);
+    Serial.print("  ");
+    Serial.print(accel);
+    Serial.print("  ");
+    Serial.println(mag);
+    delay(1000);
+  }
+  
 }
 
 imu::Quaternion getInverse(imu::Quaternion q) {
@@ -64,11 +92,7 @@ void loop(void)
   /* Angle data */
   imu::Quaternion quat = bno.getQuat();
   imu::Quaternion qInv = getInverse(quat);
-  float w = quat.w();
-  float x = quat.x(); //yaw 
-  float y = quat.y(); //pitch
-  float z = quat.z(); //roll
-  Serial.printf("q = [%5f %5f %5f %5f]         ", w,x,y,z);
+//  Serial.printf("q = [%5f %5f %5f %5f]         ", quat.w(),quat.x(),quat.y(),quat.z());
 
   imu::Quaternion pt;
   pt.w() = 0;
@@ -78,7 +102,9 @@ void loop(void)
 
   imu::Quaternion rotatedP = quat * pt * qInv;
   
-  Serial.printf("P = [%5f %5f %5f %5f]\n", rotatedP.w(),rotatedP.x(),rotatedP.y(),rotatedP.z());
+  Serial.printf("   %f   %f   %f\n", rotatedP.x(),rotatedP.y(),rotatedP.z());
+
+  delay(50);
 
   //x,y,z define axis of rotation
     //To rotate about a specified axis, only change that axis and w or only the other two
@@ -89,7 +115,6 @@ void loop(void)
    // 1: Find original axis of orientation
    // 2: Find desired axis to base new quaternion on
    // 3: Determine how much to move by
-
 
   /*
    * /total = local_rotation * total //multiplication order matters on this line
