@@ -103,10 +103,10 @@ void loop(void)
 
   //original k
   imu::Quaternion pt2;
-  pt.w() = 0;
-  pt.x() = 0;
-  pt.y() = 0;
-  pt.z() = 1;
+  pt2.w() = 0;
+  pt2.x() = 0;
+  pt2.y() = 0;
+  pt2.z() = 1;
 
   imu::Quaternion i = quat * pt * qInv;
   imu::Quaternion k = quat * pt2 * qInv;
