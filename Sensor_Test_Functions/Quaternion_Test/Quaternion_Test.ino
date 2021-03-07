@@ -94,15 +94,24 @@ void loop(void)
   imu::Quaternion qInv = getInverse(quat);
 //  Serial.printf("q = [%5f %5f %5f %5f]         ", quat.w(),quat.x(),quat.y(),quat.z());
 
+  //original i
   imu::Quaternion pt;
   pt.w() = 0;
   pt.x() = 1;
   pt.y() = 0;
   pt.z() = 0;
 
-  imu::Quaternion rotatedP = quat * pt * qInv;
+  //original k
+  imu::Quaternion pt2;
+  pt.w() = 0;
+  pt.x() = 0;
+  pt.y() = 0;
+  pt.z() = 1;
+
+  imu::Quaternion i = quat * pt * qInv;
+  imu::Quaternion k = quat * pt2 * qInv;
   
-  Serial.printf("   %f   %f   %f\n", rotatedP.x(),rotatedP.y(),rotatedP.z());
+  Serial.printf("   %f   %f   %f   %f   %f   %f\n", i.x(),i.y(),i.z(),k.x(),k.y(),k.z());
 
   delay(50);
 
