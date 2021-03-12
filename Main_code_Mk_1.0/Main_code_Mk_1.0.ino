@@ -45,6 +45,12 @@ const double P = 1;
 const double I = .1;
 const double D = .2;
 
+imu::Quaternion desiredVector;
+  desiredVector.w() = 0;
+  desiredVector.x() = 1;
+  desiredVector.y() = 0;
+  desiredVector.z() = 0;
+
 void setup() {
   // Initializing all Pins
 
@@ -142,6 +148,9 @@ int groundidle() {
 
 int liftoff() {
   int nextState = 2;
+  
+
+  
   
   return nextState;
 }
