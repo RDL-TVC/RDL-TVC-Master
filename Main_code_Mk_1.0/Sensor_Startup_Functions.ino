@@ -33,6 +33,33 @@ void bnoSetup() {
   delay(1000);
   bno.setExtCrystalUse(true);
   //return 1;
+  
+  uint8_t cal, gyro, accel, mag = 0;
+  bno.getCalibration(&cal, &gyro, &accel, &mag);
+
+  Serial.print("Calibrating BNO055  ");
+  Serial.print(cal);
+  Serial.print("  ");
+  Serial.print(gyro);
+  Serial.print("  ");
+  Serial.print(accel);
+  Serial.print("  ");
+  Serial.println(mag);
+
+  while(cal != 3)
+  {
+    bno.getCalibration(&cal, &gyro, &accel, &mag);
+    Serial.print("Calibrating BNO055  ");
+    Serial.print(cal);
+    Serial.print("  ");
+    Serial.print(gyro);
+    Serial.print("  ");
+    Serial.print(accel);
+    Serial.print("  ");
+    Serial.println(mag);
+    delay(1000);
+  }
+  
 }
 
 //Ina260

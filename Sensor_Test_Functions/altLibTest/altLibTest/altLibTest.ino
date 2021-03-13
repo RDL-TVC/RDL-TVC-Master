@@ -31,21 +31,33 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  float* alts = getAlt();
+  //double reading = bmp.performReading(); 
+  
+  float* alts = getAlt(bmp);
+
+  /*if (! bmp.performReading()) {
+        //error - could not perform reading
+        Serial.println("Error: bmp388 could not perform reading");
+        //return 0;
+      }
+      float currentAlt = bmp.readAltitude(1013.25);
+      float alts[] = {currentAlt,lastAlt};
+      lastAlt = currentAlt;*/
+  
   Serial.print("Current Altitude: ");
   Serial.println(alts[0]);
   Serial.print("Change: ");
-  Serial.println(alts[1]);
+  Serial.println(alts[0]-alts[1]);
   delay(2000);
 }
 
-float* getAlt(){
-  if (! bmp.performReading()) {
+float* getAlt(Adafruit_BMP3XX bmp1){
+  if (! bmp1.performReading()) {
         //error - could not perform reading
         Serial.println("Error: bmp388 could not perform reading");
         return 0;
       }
-      float currentAlt = bmp.readAltitude(1013.25);
+      float currentAlt = bmp1.readAltitude(1013.25);
       float alts[] = {currentAlt,lastAlt};
       lastAlt = currentAlt;
       

@@ -1,16 +1,24 @@
+//error[] = desiredAngle - currentOrientation
+float* PID(float error[]){
+  float adj[2] = {0, 0}; 
+  
+  const float P = 0;
+  const float I = 0;
+  const float D = 0;
+  
+  elapsedMillis dTime;
+  float lastErrorPitch;
+  float lastErrorYaw;
 
-double* PID(double error[]){
-  int nowTime = millis();
-  double sumPitch;
-  double sumYaw;
-  double lastErrorPitch;
-  double lastErrorYaw;
-  sumPitch += error[0] * (nowTime - lastTime);
-  sumYaw += error[1] * (nowTime - lastTime);
-  double adj[2] = {0, 0};
-  adj[0] = P * error[0] + I * sumPitch + D * (error[0] - lastErrorPitch)/(nowTime - lastTime);
-  adj[1] = P * error[1] + I * sumYaw + D * (error[0] - lastErrorYaw)/(nowTime - lastTime);
-  double lastError = error[0];
-  double lastTime = nowTime;
+  float sumPitch;
+  float sumYaw;
+
+  sumPitch += error[0] * (dTime);
+  sumYaw += error[1] * (dTime);
+
+  adj[0] = P * error[0] + I * sumPitch + D * (error[0] - lastErrorPitch)/(dTime);
+  adj[1] = P * error[1] + I * sumYaw + D * (error[0] - lastErrorYaw)/(dTime);
+  float lastError = error[0];
+  dTime = 0;
   return adj;
 }
