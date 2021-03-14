@@ -1,7 +1,7 @@
 #include <Wire.h>
 
 //120000 * 4 ints max on flash1 or flash2
-#define SIZE 50
+#define SIZE 500000
 static EXTMEM uint32_t bigArray[SIZE];
 
 /*int incomingByte = 0; // for incoming serial data
@@ -27,10 +27,10 @@ void setup() {
       //delay(1);
     }*/
   
-  Serial.print("Size: ");
+  /*Serial.print("Size: ");
   Serial.println(sizeof(bigArray));
   Serial.print("Last Value: ");
-  Serial.println(bigArray[49]);
+  Serial.println(bigArray[49]);*/
 }
 
 void loop() {
