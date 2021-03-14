@@ -111,9 +111,15 @@ void loop(void)
   imu::Quaternion i = quat * pt * qInv;
   imu::Quaternion k = quat * pt2 * qInv;
   
-  Serial.printf("   %f   %f   %f   %f   %f   %f\n", i.x(),i.y(),i.z(),k.x(),k.y(),k.z());
+  //Serial.printf("   %f   %f   %f   %f   %f   %f\n", i.x(),i.y(),i.z(),k.x(),k.y(),k.z());
 
-  delay(50);
+  float angles[2];
+  Serial.printf("[%7.2f %7.2f %7.2f]      ", i.x(), i.y(), i.z());
+  angles[0] = atan2(i.y(),sqrt(1-i.z()*i.z()-i.y()*i.y()))*180/PI;
+  angles[1] = atan2(i.z(),sqrt(1-i.y()*i.y()-i.z()*i.z()))*180/PI;
+  Serial.printf("%7.2f %7.2f  \n", angles[0], angles[1]);
+
+  //delay(50);
 
   //x,y,z define axis of rotation
     //To rotate about a specified axis, only change that axis and w or only the other two
