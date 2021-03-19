@@ -1,6 +1,6 @@
 //error[] = desiredAngle - currentOrientation
 float* PID(float error[]){
-  float adj[2] = {0, 0}; 
+  static float adj[2] = {0, 0}; 
   
   const float P = 0;
   const float I = 0;

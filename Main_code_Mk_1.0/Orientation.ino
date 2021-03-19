@@ -74,7 +74,7 @@ float* getPIDError(float* orientArr){
   float desiredVector[3] = {1, 0, 0}; //original x vector pointing up
   float curDir[3] = {orientArr[1], orientArr[2], orientArr[3]};
   
-  float angles[2];
+  static float angles[2];
   angles[0] = atan2(curDir[0],curDir[1]);
   angles[1] = atan2(curDir[0],curDir[2]);
   return angles;
