@@ -34,6 +34,8 @@ int currentState = 0; // State of the state machine to know which flight functio
   float currentAlt;
   float lastAlt;
 
+float orient[16];
+
 // PID variables
 double sumPitch = 0;
 double sumRoll = 0;
@@ -44,12 +46,6 @@ int lastTime;
 const double P = 1;
 const double I = .1;
 const double D = .2;
-
-imu::Quaternion desiredVector;
-  desiredVector.w() = 0;
-  desiredVector.x() = 1;
-  desiredVector.y() = 0;
-  desiredVector.z() = 0;
 
 void setup() {
   // Initializing all Pins
@@ -131,7 +127,7 @@ int groundidle() {
   int nextState = 2;
 
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
 
   currentAlt = alts[0];
   lastAlt = alts[1];
@@ -159,7 +155,7 @@ int burnout(){
   int nextState = 4;
 
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
   
   currentAlt = alts[0];
   lastAlt = alts[1];
@@ -179,7 +175,7 @@ int freefall(){
   //chuteDeployAltitude = 1; //TODO: Determine threshold altitude for deploying parachutes
   
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
 
   currentAlt = alts[0];
   lastAlt = alts[1];
@@ -198,7 +194,7 @@ int chute(){
   int nextState = 6;
 
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
 
   currentAlt = alts[0];
   lastAlt = alts[1];
@@ -228,7 +224,7 @@ int landing(){
 
 int failure() {
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
   
   currentAlt = alts[0];
   lastAlt = alts[1];

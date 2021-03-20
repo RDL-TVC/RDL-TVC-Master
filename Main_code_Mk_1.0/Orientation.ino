@@ -1,7 +1,4 @@
-float* orientation() {
-
-  //[check, dirX, dirY, dirZ, rollX, rollY, rollZ, accelX, accelY, accelZ, gyroX, gryoY, gyroZ, magX, magY, magZ];
-  float orient[16];
+void orientation(float orient[]) {
 
   //orient[0] = check if bno still works
 
@@ -52,8 +49,6 @@ float* orientation() {
   orient[13] = mag.x();
   orient[14] = mag.z();
   orient[15] = mag.y();
-
-  return orient;
 }
 
 imu::Quaternion getInverse(imu::Quaternion q) {
@@ -73,4 +68,14 @@ imu::Quaternion getInverse(imu::Quaternion q) {
   inv.z() = conj.z()/norm;
 
   return inv;
+}
+
+float* getPIDError(float* orientArr){
+  float desiredVector[3] = {1, 0, 0}; //original x vector pointing up
+  float curDir[3] = {orientArr[1], orientArr[2], orientArr[3]};
+  
+  static float angles[2];
+  angles[0] = atan2(curDir[0],curDir[1]);
+  angles[1] = atan2(curDir[0],curDir[2]);
+  return angles;
 }

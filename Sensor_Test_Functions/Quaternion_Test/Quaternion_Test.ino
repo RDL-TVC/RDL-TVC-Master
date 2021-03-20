@@ -94,12 +94,12 @@ void loop(void)
   imu::Quaternion qInv = getInverse(quat);
 //  Serial.printf("q = [%5f %5f %5f %5f]         ", quat.w(),quat.x(),quat.y(),quat.z());
 
-  //original i
-  imu::Quaternion pt;
-  pt.w() = 0;
-  pt.x() = 1;
-  pt.y() = 0;
-  pt.z() = 0;
+  //original i vector (towards nosecone due to how bno055 is oriented)
+  imu::Quaternion pt1; //vector to this point on a unit sphere from origin
+  pt1.w() = 0;
+  pt1.x() = 1;
+  pt1.y() = 0;
+  pt1.z() = 0;
 
   //original k
   imu::Quaternion pt2;
@@ -108,12 +108,18 @@ void loop(void)
   pt2.y() = 0;
   pt2.z() = 1;
 
-  imu::Quaternion i = quat * pt * qInv;
-  imu::Quaternion k = quat * pt2 * qInv;
+  imu::Quaternion dir = quat * pt1 * qInv;
+  imu::Quaternion rollVec = quat * pt2 * qInv;
   
-  Serial.printf("   %f   %f   %f   %f   %f   %f\n", i.x(),i.y(),i.z(),k.x(),k.y(),k.z());
+  float angles[2];
+  //Serial.printf("[%7.5f %7.5f %7.5f]      ", dir.x(), dir.y(), dir.z());
+  angles[0] = asin(dir.x())*180/PI; //use 90 - acos(dot(dir, i)) and convert to degrees
+  angles[1] = asin(dir.y())*180/PI; 
+  //Serial.printf("%7.2f %7.2f  \n", angles[0], angles[1]);
 
-  delay(50);
+  Serial.printf("   %f   %f   %f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec.x(), rollVec.y(), rollVec.z(),angles[0], angles[1]);
+
+  //delay(50);
 
   //x,y,z define axis of rotation
     //To rotate about a specified axis, only change that axis and w or only the other two
