@@ -17,7 +17,7 @@ void setup() {
   
   for (uint32_t i = 0; i < (sizeof(bigArray)/sizeof(int)); i++){
       bigArray[i] = i;
-      //Serial.println(bigArray[i]);
+      Serial.println(bigArray[i]);
       //delay(1);
     }
 
@@ -27,10 +27,10 @@ void setup() {
       //delay(1);
     }*/
   
-  /*Serial.print("Size: ");
+  Serial.print("Size: ");
   Serial.println(sizeof(bigArray));
   Serial.print("Last Value: ");
-  Serial.println(bigArray[49]);*/
+  Serial.println(bigArray[5500]);
 }
 
 void loop() {
