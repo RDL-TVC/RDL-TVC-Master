@@ -11,8 +11,8 @@
 #include <Servo.h>
 #include <SD.h>
 
-#define SERVO_PIN_LR 0
-#define SERVO_PIN_FB 1
+#define SERVO_PIN_PITCH 0
+#define SERVO_PIN_YAW 1
 
 const int armingPin = 2; // Place holder pin for the arming button
 const int chuteChargeContOut = 5; // Placeholder Not sure how the continuity of the chute charge will be tested.
@@ -27,8 +27,8 @@ const int chipSelect = BUILTIN_SDCARD;
 Adafruit_BMP3XX bmp;
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 Adafruit_INA260 ina260 = Adafruit_INA260();
-Servo servo_LR;
-Servo servo_FB;
+Servo servo_Pitch;
+Servo servo_Yaw;
 
 int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
   float currentAlt;
@@ -88,7 +88,7 @@ int callFLightFunc(int state) {
       nextState = groundidle();
       break;
     case 3 :
-      nextState = liftoff();
+      nextState = boost();
       break;
     case 4 :
       nextState = burnout();
@@ -142,11 +142,16 @@ int groundidle() {
   return nextState;
 }
 
-int liftoff() {
+int boost() {
   int nextState = 2;
-  
+  orientation(orient);
+//Apply DCM to orient function first
+  float relOrient = DCMfunc(orient);
+  float* gimbalAngle = PID(getPIDError(relOrient));
 
-  
+    //may be assigned wrong
+  servo_Pitch = gimbalAngle[0];
+   servo_Yaw = gimbalAngle[1];
   
   return nextState;
 }
