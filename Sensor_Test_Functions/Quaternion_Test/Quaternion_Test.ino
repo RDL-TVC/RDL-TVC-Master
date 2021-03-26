@@ -92,7 +92,7 @@ void loop(void)
   /* Angle data */
   imu::Quaternion quat = bno.getQuat();
   imu::Quaternion qInv = getInverse(quat);
-//  Serial.printf("q = [%5f %5f %5f %5f]         ", quat.w(),quat.x(),quat.y(),quat.z());
+  //Serial.printf("q = [%5f %5f %5f %5f]         ", quat.w(),quat.x(),quat.y(),quat.z());
 
   //original i vector (towards nosecone due to how bno055 is oriented)
   imu::Quaternion pt1; //vector to this point on a unit sphere from origin
@@ -112,13 +112,27 @@ void loop(void)
   imu::Quaternion rollVec = quat * pt2 * qInv;
   
   float angles[2];
-  //Serial.printf("[%7.5f %7.5f %7.5f]      ", dir.x(), dir.y(), dir.z());
+  Serial.printf("[%7.5f %7.5f %7.5f]      ", dir.x(), dir.y(), dir.z());
   angles[0] = asin(dir.x())*180/PI; //use 90 - acos(dot(dir, i)) and convert to degrees
   angles[1] = asin(dir.y())*180/PI; 
-  //Serial.printf("%7.2f %7.2f  \n", angles[0], angles[1]);
+  Serial.printf("%7.2f %7.2f     ", angles[0], angles[1]);
 
-  Serial.printf("   %f   %f   %f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec.x(), rollVec.y(), rollVec.z(),angles[0], angles[1]);
+  //Serial.printf("   %f   %f   %f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec.x(), rollVec.y(), rollVec.z(),angles[0], angles[1]);
 
+  imu::Vector<3> eul = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+
+  //float roll = eul.x();
+  //angles[0] -= roll;
+  //angles[1] -= roll;
+  
+  //Serial.printf("Roll: %7.2f    modified: %7.2f %7.2f  \n", roll, angles[0], angles[1]);
+
+  float pitchMicroSeconds = map(0.4285*angles[0], -45, 45 ,1000, 2000);
+  float yawMicroSeconds = map(0.4285*angles[1], -45, 45 ,1000, 2000);
+  
+  servo_pitch.write(pitchMicroSeconds);
+  servo_yaw.write(yawMicroSeconds);
+  
   //delay(50);
 
   //x,y,z define axis of rotation
