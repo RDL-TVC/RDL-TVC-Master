@@ -71,11 +71,18 @@ imu::Quaternion getInverse(imu::Quaternion q) {
 }
 
 float* getPIDError(float* orientArr){
-  float desiredVector[3] = {1, 0, 0}; //original x vector pointing up
-  float curDir[3] = {orientArr[1], orientArr[2], orientArr[3]};
-  
   static float angles[2];
-  angles[0] = atan2(curDir[0],curDir[1]);
-  angles[1] = atan2(curDir[0],curDir[2]);
+  angles[0] = asin(orientArr[1])*180/PI; //use 90 - acos(dot(dir, i)) and convert to degrees
+  angles[1] = asin(orientArr[2])*180/PI; 
+
+  //needs DCM for different correct servo angles
   return angles;
+}
+
+//Apply DCM to find relative axis and map the angles to the servos correctly
+float* DCM(float* orientArr) {
+  static float relativeAngles[2];
+
+
+  return relativeAnges;
 }
