@@ -47,14 +47,15 @@ File added by: Evan Grilley
 // Wiz820+SD board: pin 4
 // Teensy 2.0: pin 0
 // Teensy++ 2.0: pin 20
-const int chipSelect = 4;
+const int chipSelect = BUILTIN_SDCARD;
+int currentMillis;
+int oldMillis;
 
 void setup()
 {
   //UNCOMMENT THESE TWO LINES FOR TEENSY AUDIO BOARD:
   //SPI.setMOSI(7);  // Audio shield has MOSI on pin 7
   //SPI.setSCK(14);  // Audio shield has SCK on pin 14
-  
  // Open serial communications and wait for port to open:
   Serial.begin(9600);
    while (!Serial) {
@@ -79,14 +80,15 @@ void loop()
   String dataString = "";
 
   // read three sensors and append to the string:
-  for (int analogPin = 0; analogPin < 3; analogPin++) {
-    int sensor = analogRead(analogPin);
-    dataString += String(sensor);
-    if (analogPin < 2) {
+  for (int analogPin = 0; analogPin < 5000; analogPin++) {
+    //int sensor = analogRead(analogPin);
+    dataString += String(analogPin);
+    if (analogPin < 5000) {
       dataString += ","; 
     }
   }
 
+  oldMillis = millis();
   // open the file.
   File dataFile = SD.open("datalog.txt", FILE_WRITE);
 
@@ -95,10 +97,12 @@ void loop()
     dataFile.println(dataString);
     dataFile.close();
     // print to the serial port too:
-    Serial.println(dataString);
+    //Serial.println(dataString);
   }  
   // if the file isn't open, pop up an error:
   else {
     Serial.println("error opening datalog.txt");
   } 
+  currentMillis = millis();
+  Serial.println(currentMillis-oldMillis);
 }
