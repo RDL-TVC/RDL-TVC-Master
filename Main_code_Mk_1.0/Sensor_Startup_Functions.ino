@@ -89,8 +89,8 @@ void miscSetup() {
 
 //Servos
 int servoSetup() {
-  servo_Pitch.attach(SERVO_PIN_PITCH);
-  servo_Yaw.attach(SERVO_PIN_YAW);
+  servoPitch.attach(SERVO_PIN_PITCH);
+  servoYaw.attach(SERVO_PIN_YAW);
 }
 
 //SD card

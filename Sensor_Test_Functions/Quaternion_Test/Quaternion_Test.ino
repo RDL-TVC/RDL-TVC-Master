@@ -108,8 +108,16 @@ void loop(void)
   pt2.y() = 0;
   pt2.z() = 1;
 
+  //original j
+  imu::Quaternion pt3;
+  pt3.w() = 0;
+  pt3.x() = 0;
+  pt3.y() = 0;
+  pt3.z() = 1;
+
   imu::Quaternion dir = quat * pt1 * qInv;
-  imu::Quaternion rollVec = quat * pt2 * qInv;
+  imu::Quaternion rollVec1 = quat * pt2 * qInv;
+  imu::Quaternion rollVec2 = quat * pt3 * qInv;
   
   float angles[2];
   Serial.printf("[%7.5f %7.5f %7.5f]      ", dir.x(), dir.y(), dir.z());
@@ -125,13 +133,20 @@ void loop(void)
   //angles[0] -= roll;
   //angles[1] -= roll;
   
-  //Serial.printf("Roll: %7.2f    modified: %7.2f %7.2f  \n", roll, angles[0], angles[1]);
+  //Serial.printf("Roll: %7.2f    modified: %7.2f %7.2f    ", roll, angles[0], angles[1]);
 
-  float pitchMicroSeconds = map(0.4285*angles[0], -45, 45 ,1000, 2000);
-  float yawMicroSeconds = map(0.4285*angles[1], -45, 45 ,1000, 2000);
+  angles[0] /= 0.4285;
+  angles[1] /= 0.4285;
+  Serial.printf("%7.2f %7.2f     \n", angles[0], angles[1]);
+  float pitchMicroSeconds = map(angles[0], -45, 45 ,1000, 2000); //0.4285 linear relationship
+  float yawMicroSeconds = map(angles[1], -45, 45 ,1000, 2000);
   
   servo_pitch.write(pitchMicroSeconds);
   servo_yaw.write(yawMicroSeconds);
+
+  //float pitch = map(pitchMicroSeconds, 1000, 2000 , -45, 45);
+  //float yaw = map(yawMicroSeconds, 1000, 2000, -45, 45);
+  //Serial.printf("%7.2f %7.2f     \n", pitch, yaw);
   
   //delay(50);
 
