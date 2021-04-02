@@ -27,8 +27,8 @@ const int chipSelect = BUILTIN_SDCARD;
 Adafruit_BMP3XX bmp;
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 Adafruit_INA260 ina260 = Adafruit_INA260();
-Servo servo_Pitch;
-Servo servo_Yaw;
+Servo servoPitch;
+Servo servoYaw;
 
 int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
   float currentAlt;
@@ -128,6 +128,7 @@ int groundidle() {
 
   float* alts = altSensor.getAlt();
   orientation(orient);
+  
 
   currentAlt = alts[0];
   lastAlt = alts[1];
@@ -142,17 +143,21 @@ int groundidle() {
   return nextState;
 }
 
+//TODO find acceceration vector compared to direction vector to see which component feels gravity
 int boost() {
-  int nextState = 2;
+  int nextState = 3;
   orientation(orient);
-//Apply DCM to orient function first
-  float relOrient = DCMfunc(orient);
-  float* gimbalAngle = PID(getPIDError(relOrient));
+  float* gimbalAngle = findGimbalAngles(orient);
+  float* servoAngle = PID(gimbalAngle);
 
-    //may be assigned wrong
-  servo_Pitch = gimbalAngle[0];
-   servo_Yaw = gimbalAngle[1];
-  
+  servoPitch.writeMicroseconds(servoAngle[0]);
+  servoYaw.writeMicroseconds(servoAngle[1]);
+
+  /*
+  float accelMag = sqrt(orient[7]*orient[7] + orient[8]*orient[8] + orient[9]*orient[9]);
+  if (accelMag <= ) {
+    nextState = 4;
+  } */
   return nextState;
 }
 

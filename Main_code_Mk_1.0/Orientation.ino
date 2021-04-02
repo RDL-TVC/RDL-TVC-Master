@@ -1,3 +1,8 @@
+/* TODO
+ * Find place to record quaternion data
+ * Take out angle conversion to degrees and fix mapping (in PID tab) to reflect that
+ * Find alternate way to measure roll angle without the jump
+ */
 void orientation(float orient[]) {
 
   //orient[0] = check if bno still works
@@ -70,19 +75,22 @@ imu::Quaternion getInverse(imu::Quaternion q) {
   return inv;
 }
 
-float* getPIDError(float* orientArr){
-  static float angles[2];
-  angles[0] = asin(orientArr[1])*180/PI; //use 90 - acos(dot(dir, i)) and convert to degrees
-  angles[1] = asin(orientArr[2])*180/PI; 
+//Apply DCM to find relative axis
+float* findGimbalAngles(float* orientArr) {
+  //[pitchAngle, yawAngle]
+  static float angles[2]; 
+  
+  //uses roll angle measured from the BNO055 
+    //WARNING: Measured roll angle is known to jump 
+  imu::Vector<3> eul = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  float roll = eul.x()*PI/180;
 
-  //needs DCM for different correct servo angles
+  //Uses DCM to account for roll in the servo angles by altering the original direction vector
+  float dir2[3] = {orientArr[1]*cos(roll) + orientArr[2]*sin(roll), -orientArr[1]*sin(roll) + orientArr[2]*cos(roll), orientArr[3]};
+
+  //Uses altered direction vector to compute gimbal angles with roll accounted for
+  angles[0] = asin(dir2[0])*180/PI; //Non-simplified Equation: = 90 - acos(dot(dir, i)); then convert to degrees
+  angles[1] = asin(dir2[1])*180/PI; 
+
   return angles;
-}
-
-//Apply DCM to find relative axis and map the angles to the servos correctly
-float* DCM(float* orientArr) {
-  static float relativeAngles[2];
-
-
-  return relativeAnges;
 }
