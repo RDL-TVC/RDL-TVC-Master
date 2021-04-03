@@ -48,11 +48,26 @@ rolVecCal(:,2) = rolVec(:,1)*calDCM(2,1) + rolVec(:,2) * calDCM(2,2)...
 rolVecCal(:,3) = rolVec(:,1)*calDCM(3,1) + rolVec(:,2) * calDCM(3,2)...
     + rolVec(:,3) * calDCM(3,3);
 
+sideVec = -cross(dirVec,rolVec);
+sideVecCal = -cross(dirVecCal,rolVecCal);
+
+verticalLine = zeros(h,3);
+verticalLine(:,3) = 1;
+
+rolLineThrust = zeros(h,1);
+sidLineThrust = zeros(h,1);
+
+for ii = 1:h
+    rolLineThrust(ii) = -dot(rolVecCal(ii,1:3),verticalLine(ii,1:3));
+    sidLineThrust(ii) = -dot(sideVecCal(ii,1:3),verticalLine(ii,1:3));
+
+    
+end
 %projVec(:,1:3) = rolVec(:,1:3) - dot(rolVec(:,1:3),norm(dirVec(:,1:3)))*rolVec(:,1:3);
 
 %Creates first plot
 %this plot contains the unmodified direction and roll data
-subplot(1,2,1);
+subplot(1,3,1);
 hold on;
 xlim([-1.2 1.2])
 ylim([-1.2 1.2])
@@ -70,37 +85,53 @@ newXVecLine = plot3([0,newXVector(1)],[0,newXVector(2)],[0,newXVector(3)], 'y', 
 
 %initialized plot objects for the first plot
 vectorLine = plot3([0,1],[0,1],[0,1], 'r', 'Linewidth', 2);
-rollLine = plot3([0,0],[0,0],[0,0], 'b', 'Linewidth', 1); 
+rollLine = plot3([0,0],[0,0],[0,0], 'b', 'Linewidth', 1);
+sideLine = plot3([0,0],[0,0],[0,0], 'g', 'Linewidth', 1);
+
 view(45,45);
 grid on;
 
 %Creates second plot
 %Contains data adjusted for the new axis system
-subplot(1,2,2);
+subplot(1,3,2);
 hold on;
 xlim([-1.2 1.2])
 ylim([-1.2 1.2])
 zlim([-1.2 1.2])
 title("System Animation Calibrated")
 vectorLineCal = plot3([0,1],[0,1],[0,1], 'r', 'Linewidth', 2);
-rollLineCal = plot3([0,0],[0,0],[0,0], 'b', 'Linewidth', 1); 
+rollLineCal = plot3([0,0],[0,0],[0,0], 'b', 'Linewidth', 1);
+sideLineCal = plot3([0,0],[0,0],[0,0], 'g', 'Linewidth', 1);
 view(45,45);
 grid on;
+
+subplot(1,3,3);
+hold on;
+xlim([-1.2 1.2])
+ylim([-1.2 1.2])
+zlim([-1.2 1.2])
+title("System Animation Calibrated");
+thrustTrace = plot([0,0],[0,0], 'b');
+thrustPoint = scatter([0],[0],25,'r');
 
 %loop contains animation code for the plots
 for ii = 1:h
     %updates the objects in the first plot
     set(vectorLine,'XData',[0,vec(ii,1)],'YData',[0,vec(ii,2)],'ZData',[0,vec(ii,3)]);
     set(rollLine,'XData',[0,vec(ii,4)]/2,'YData',[0,vec(ii,5)]/2,'ZData',[0,vec(ii,6)]/2);
+    set(sideLine,'XData',[0,sideVec(ii,1)/2],'YData',[0,sideVec(ii,2)/2],'ZData',[0,sideVec(ii,3)/2]);
     
     %updates the objects in the second plot
     set(vectorLineCal,'XData',[0,dirVecCal(ii,1)],'YData',[0,dirVecCal(ii,2)],'ZData',[0,dirVecCal(ii,3)]);
     set(rollLineCal,'XData',[0,rolVecCal(ii,1)]/2,'YData',[0,rolVecCal(ii,2)]/2,'ZData',[0,rolVecCal(ii,3)]/2);
+    set(sideLineCal,'XData',[0,sideVecCal(ii,1)]/2,'YData',[0,sideVecCal(ii,2)]/2,'ZData',[0,sideVecCal(ii,3)]/2);
+    
+    set(thrustTrace, 'XData',rolLineThrust(1:ii),'YData',sidLineThrust(1:ii));
+    set(thrustPoint, 'XData',rolLineThrust(ii),'YData',sidLineThrust(ii));
+    
     
     %1/20 second delay and draw command
     %hopefully maintians 20 fps
-    pause(0.05)
+    pause(0.1)
     drawnow
 end
-
-
