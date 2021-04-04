@@ -1,3 +1,4 @@
+/*
 #include <Servo.h>
 
 #define SERVO_PIN_LR 0
@@ -18,23 +19,6 @@ void setup() {
 
 void loop() 
 {
-
-  servo_FB.writeMicroseconds(1000); //-45(?)
-  delay(1000);
-  servo_FB.writeMicroseconds(1500); //0
-  delay(1000);
-  servo_FB.writeMicroseconds(2000); //45 (?)
-  delay(1000);
-
-  servo_LR.writeMicroseconds(1000);
-  delay(1000);
-  servo_LR.writeMicroseconds(1500);
-  delay(1000);
-  servo_LR.writeMicroseconds(2000);
-  delay(1000);
-
-
-  /*
   for(i = 0; i <= 50; i++)
   {
     servo_FB.write(90 - i);
@@ -84,8 +68,9 @@ void loop()
   Serial.println("Fourth Phase Done");
   Serial.println(" ");
   delay(100);
-*/
+
 //https://www.google.com/search?q=arduino+print+to+console&rlz=1C1CHBF_enUS830US830&oq=arduino+print+&aqs=chrome.1.69i57j0l7.5312j0j7&sourceid=chrome&ie=UTF-8
   
 
 }
+*/

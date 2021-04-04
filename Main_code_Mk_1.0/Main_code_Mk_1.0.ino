@@ -14,10 +14,14 @@
 #define SERVO_PIN_PITCH 0
 #define SERVO_PIN_YAW 1
 
-const int armingPin = 2; // Place holder pin for the arming button
-const int chuteChargeContOut = 5; // Placeholder Not sure how the continuity of the chute charge will be tested.
-const int chuteCharge1 = 3; // Placeholder
-const int chuteCharge2 = 4; // Placeholder
+#define BUZZER 14
+
+const int LED1 = 8;
+const int LED2 = 9;
+const int armingPin1 = 6;
+const int armingPin2 = 7;
+const int chuteCharge1 = 4; 
+const int chuteCharge2 = 5; 
 
 const float accelThreshold = 10; // Placeholder
 const float seaLevelPressure = 1013.25; //units of hPa, required for pressure altitude
@@ -48,33 +52,28 @@ const double I = .1;
 const double D = .2;
 
 void setup() {
-  // Initializing all Pins
-
-  pinMode(armingPin, INPUT);
-  pinMode(chuteCharge1, INPUT);
-  pinMode(chuteCharge2, INPUT);
-
-  pinMode(chuteChargeContOut, OUTPUT);
-
   Serial.begin(115200);
 
   // Initializing sensors and center equipment
+  indicatorSetup();
   SDSetup();
   inaSetup();
+  orient[0] = bnoSetup();
   bmpSetup();
-  bnoSetup();
   servoSetup();
   miscSetup();
-  
+
+  //TODO Mario powerup sound for "might work"!
+  tone(BUZZER, 3000, 1000); //Victory Screech
 }
 
 void loop() {
 
-  currentState = callFLightFunc(currentState); // added a function rapper to make more modular, however unlikely to be needed
+  currentState = callFlightFunc(currentState); // added a function rapper to make more modular, however unlikely to be needed
 
 }
 
-int callFLightFunc(int state) {
+int callFlightFunc(int state) {
   /* 
   Intakes the current state of the state machine and runs the appropriate function for that state.
   Returns the next state of the state machine
@@ -109,27 +108,29 @@ int callFLightFunc(int state) {
 
 int startup() {
   int nextState = 1;
-  digitalWrite(chuteChargeContOut, HIGH);
-  int charge1 = digitalRead(chuteCharge1);
-  int charge2 = digitalRead(chuteCharge2); 
-  digitalWrite(chuteChargeContOut, LOW);
-  int armed = digitalRead(armingPin);
 
-  if ((not charge1) or (not charge2)){
-    nextState - 0; // Placeholder for failure state at least one of the chute charges is not connected
-  } else if (armed) {
+  if(digitalRead(armingPin1) == HIGH && digitalRead(armingPin2) == HIGH) {
     nextState = 2;
+    //Print to event string
   }
+
   return nextState;
 }
 
 int groundidle() {
   int nextState = 2;
 
+  orientation(orient);
+  if (orient[7] >= 12) {
+    nextState = 3;
+  }
+
+  return nextState;
+  
+  /*
   float* alts = altSensor.getAlt();
   orientation(orient);
   
-
   currentAlt = alts[0];
   lastAlt = alts[1];
   
@@ -140,12 +141,14 @@ int groundidle() {
     //initPID();
     //unlockServos();
   }
-  return nextState;
+  */
 }
 
-//TODO find acceceration vector compared to direction vector to see which component feels gravity
+//TODO find acceleration vector compared to direction vector to see which component feels gravity
 int boost() {
   int nextState = 3;
+  tone(BUZZER, 3000, 1000); //runs buzzer for 1s when liftoff is detected
+  
   orientation(orient);
   float* gimbalAngle = findGimbalAngles(orient);
   float* servoAngle = PID(gimbalAngle);
