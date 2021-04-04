@@ -8,7 +8,9 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  tone(piezoPin,4000,10000);
-  
+  tone(piezoPin,300,1000);
+  //delay(1000);
+  tone(piezoPin,500,1000);
+  //delay(1000);
  
 }

@@ -11,8 +11,8 @@
 #include <Servo.h>
 #include <SD.h>
 
-#define SERVO_PIN_LR 0
-#define SERVO_PIN_FB 1
+#define SERVO_PIN_PITCH 0
+#define SERVO_PIN_YAW 1
 
 const int armingPin = 2; // Place holder pin for the arming button
 const int chuteChargeContOut = 5; // Placeholder Not sure how the continuity of the chute charge will be tested.
@@ -27,12 +27,14 @@ const int chipSelect = BUILTIN_SDCARD;
 Adafruit_BMP3XX bmp;
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 Adafruit_INA260 ina260 = Adafruit_INA260();
-Servo servo_LR;
-Servo servo_FB;
+Servo servoPitch;
+Servo servoYaw;
 
 int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
   float currentAlt;
   float lastAlt;
+
+float orient[16];
 
 // PID variables
 double sumPitch = 0;
@@ -86,7 +88,7 @@ int callFLightFunc(int state) {
       nextState = groundidle();
       break;
     case 3 :
-      nextState = liftoff();
+      nextState = boost();
       break;
     case 4 :
       nextState = burnout();
@@ -125,7 +127,8 @@ int groundidle() {
   int nextState = 2;
 
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
+  
 
   currentAlt = alts[0];
   lastAlt = alts[1];
@@ -140,9 +143,21 @@ int groundidle() {
   return nextState;
 }
 
-int liftoff() {
-  int nextState = 2;
-  
+//TODO find acceceration vector compared to direction vector to see which component feels gravity
+int boost() {
+  int nextState = 3;
+  orientation(orient);
+  float* gimbalAngle = findGimbalAngles(orient);
+  float* servoAngle = PID(gimbalAngle);
+
+  servoPitch.writeMicroseconds(servoAngle[0]);
+  servoYaw.writeMicroseconds(servoAngle[1]);
+
+  /*
+  float accelMag = sqrt(orient[7]*orient[7] + orient[8]*orient[8] + orient[9]*orient[9]);
+  if (accelMag <= ) {
+    nextState = 4;
+  } */
   return nextState;
 }
 
@@ -150,7 +165,7 @@ int burnout(){
   int nextState = 4;
 
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
   
   currentAlt = alts[0];
   lastAlt = alts[1];
@@ -170,7 +185,7 @@ int freefall(){
   //chuteDeployAltitude = 1; //TODO: Determine threshold altitude for deploying parachutes
   
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
 
   currentAlt = alts[0];
   lastAlt = alts[1];
@@ -189,7 +204,7 @@ int chute(){
   int nextState = 6;
 
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
 
   currentAlt = alts[0];
   lastAlt = alts[1];
@@ -219,7 +234,7 @@ int landing(){
 
 int failure() {
   float* alts = altSensor.getAlt();
-  float* orient = orientation();
+  orientation(orient);
   
   currentAlt = alts[0];
   lastAlt = alts[1];
