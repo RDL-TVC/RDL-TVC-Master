@@ -6,6 +6,7 @@
 
 #define SERVO_PIN_PITCH 0
 #define SERVO_PIN_YAW 1
+#define RAD_TO_DEG 57.295779513082320876798154814105
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
@@ -20,12 +21,7 @@ float orient[] = {0, 0, 0, 0};
 float orient_cur[3] = {0, 0, 0};
 float orient_last[3] = {0, 0, 0};
 
-double dirTrueUp[3];
-double rolTrueUp[3];
-double sidTrueUp[3];
-
-double rolVecServoAngle;
-double sidVecServoAngle;
+double usArray[2];
 
 void setup(void)
 {
@@ -119,69 +115,30 @@ void loop(void)
   imu::Quaternion pt3;
   pt3.w() = 0;
   pt3.x() = 0;
-  pt3.y() = 0;
-  pt3.z() = 1;
+  pt3.y() = 1;
+  pt3.z() = 0;
 
   imu::Quaternion dir = quat * pt1 * qInv;
   imu::Quaternion rollVec1 = quat * pt2 * qInv;
   imu::Quaternion rollVec2 = quat * pt3 * qInv;
 
-  dirTrueUp[0] = dir.x();
-  dirTrueUp[1] = dir.y();
-  dirTrueUp[2] = dir.z();
-
-  rolTrueUp[0] = rollVec1.x();
-  rolTrueUp[1] = rollVec1.y();
-  rolTrueUp[2] = rollVec1.z();
-
-  sidTrueUp[0] = rollVec2.x();
-  sidTrueUp[1] = rollVec2.y();
-  sidTrueUp[2] = rollVec2.z();
-
-  rolVecServoAngle = asin(rolTrueUp[2]);
-  sidVecServoAngle = asin(sidTrueUp[2]);  
-
+  PIDFunction(rollVec1, rollVec2, usArray);
+  
   Serial.printf("   %f   %f   %f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec1.x(), rollVec1.y(), rollVec1.z());
+  Serial.printf("f   %f\n", usArray[0], usArray[1]);
+}
 
-  //imu::Vector<3> eul = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, double usArray[]){
+  
+  double rolVecServoAngle = asin(rollVec1.z());
+  double sidVecServoAngle = asin(rollVec2.z());
 
-  //float roll = eul.x();
-  //angles[0] -= roll;
-  //angles[1] -= roll;
+  double rolDeg = rolVecServoAngle * RAD_TO_DEG;
+  double sidDeg = sidVecServoAngle * RAD_TO_DEG;
 
-  //Serial.printf("Roll: %7.2f    modified: %7.2f %7.2f    ", roll, angles[0], angles[1]);
+  double rolVecServoUS = map(rolDeg, -90, 90, 1000, 2000);
+  double sidVecServoUS = map(sidDeg, -90, 90, 1000, 2000);
 
-  /*angles[0] /= 0.4285;
-  angles[1] /= 0.4285;
-  Serial.printf("%7.2f %7.2f     \n", angles[0], angles[1]);
-  float pitchMicroSeconds = map(angles[0], -45, 45 , 1000, 2000); //0.4285 linear relationship
-  float yawMicroSeconds = map(angles[1], -45, 45 , 1000, 2000);
-
-  servo_pitch.write(pitchMicroSeconds);
-  servo_yaw.write(yawMicroSeconds); */
-
-  //float pitch = map(pitchMicroSeconds, 1000, 2000 , -45, 45);
-  //float yaw = map(yawMicroSeconds, 1000, 2000, -45, 45);
-  //Serial.printf("%7.2f %7.2f     \n", pitch, yaw);
-
-  //delay(50);
-
-  //x,y,z define axis of rotation
-  //To rotate about a specified axis, only change that axis and w or only the other two
-  //Ex: Rotate about x - w & x can change OR y & z can change
-  //quaternion also described as q = cos(theta) + sin(theta)*(x,y,z)
-  //theta = angle/amount of rotation, (x,y,z) described above
-
-  // 1: Find original axis of orientation
-  // 2: Find desired axis to base new quaternion on
-  // 3: Determine how much to move by
-
-  /*
-     /total = local_rotation * total //multiplication order matters on this line
-     //axis is a unit vector
-     local_rotation.w = cosf( fAngle/2)
-     local_rotation.x = axis.x * sinf( fAngle/2 )
-     local_rotation.y = axis.y * sinf( fAngle/2 )
-     local_rotation.z = axis.z * sinf( fAngle/2 )
-  */
+  usArray[0] = rolVecServoUS;
+  usArray[1] = sidVecServoUS;
 }
