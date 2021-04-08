@@ -69,6 +69,20 @@ void setup(void)
     delay(1000);
   }
 
+  int upDirStartTime = millis();
+  int upDirCurrTime = millis();
+  int remainingTime;
+  
+  while (upDirCurrTime-upDirStartTime <= 5000){
+
+    remainingTime = 5000-(upDirCurrTime-upDirStartTime);
+    Serial.println("picking up direction in:");
+    Serial.println(remainingTime);
+    upDirCurrTime = millis();
+    delay(100);
+    
+  }
+  Serial.println("Direction Chosen!");
 }
 
 imu::Quaternion getInverse(imu::Quaternion q) {
@@ -89,6 +103,11 @@ imu::Quaternion getInverse(imu::Quaternion q) {
 
   return inv;
 }
+
+int firstRun = 1;
+double DCM[3][3];
+double newRollVec1z;
+double newRollVec2z;
 
 void loop(void)
 {
@@ -122,22 +141,61 @@ void loop(void)
   imu::Quaternion rollVec1 = quat * pt2 * qInv;
   imu::Quaternion rollVec2 = quat * pt3 * qInv;
 
-  PIDFunction(rollVec1, rollVec2, usArray);
+  if (firstRun == 1){
+    firstRun = firstRun - 1;
+    
+    /*DCM[0][0] = rollVec2.x();
+    DCM[1][0] = rollVec2.y();
+    DCM[2][0] = rollVec2.z();
+    DCM[0][1] = rollVec1.x();
+    DCM[1][1] = rollVec1.y();
+    DCM[2][1] = rollVec2.z();
+    DCM[0][2] = dir.x();
+    DCM[1][2] = dir.y();
+    DCM[2][2] = dir.z();*/
+
+    /*imu::Quaternion newDir = dir;
+    imu::Quaternion newRoll1 = rollVec1;
+    imu::Quaternion newRoll2 = rollVec2;*/
+    
+  }
   
-  Serial.printf("   %f   %f   %f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec1.x(), rollVec1.y(), rollVec1.z());
-  Serial.printf("f   %f\n", usArray[0], usArray[1]);
+  PIDFunction(rollVec1, rollVec2, dir, usArray, DCM);
+  
+  Serial.printf("%f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec1.x(), rollVec1.y(), rollVec1.z());
+
+  /*double newDirX = DCM[0][0] * dir.x() + DCM[0][1] * dir.y() + DCM[0][2] * dir.z();
+  double newDirY = DCM[1][0] * dir.x() + DCM[1][1] * dir.y() + DCM[1][2] * dir.z();
+  double newDirZ = DCM[2][0] * dir.x() + DCM[2][1] * dir.y() + DCM[2][2] * dir.z();
+  Serial.printf("%f   %f   %f\n", newDirX, newDirY, newDirZ);*/
+  
+  //Serial.printf("%f   %f\n", usArray[0], usArray[1]);
 }
 
-void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, double usArray[]){
+//argument: double DCM[][3]
+
+void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quaternion dir, double usArray[], double DCM[][3]){
+  
+  /*newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
+  newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();*/
+
+  /*errorDir = newDir - dir;
+  errorRol1 = newRoll1 - rollVec1;
+  errorRol2 = newRoll2 - rollVec2;*/
   
   double rolVecServoAngle = asin(rollVec1.z());
   double sidVecServoAngle = asin(rollVec2.z());
 
+  //Serial.printf("%f   %f\n", rolVecServoAngle, sidVecServoAngle);
+
   double rolDeg = rolVecServoAngle * RAD_TO_DEG;
   double sidDeg = sidVecServoAngle * RAD_TO_DEG;
 
-  double rolVecServoUS = map(rolDeg, -90, 90, 1000, 2000);
-  double sidVecServoUS = map(sidDeg, -90, 90, 1000, 2000);
+  double rolVecServoUS = map(rolDeg, -90, 90, 900, 2100);
+  double sidVecServoUS = map(sidDeg, -90, 90, 900, 2100);
+
+  servo_pitch.writeMicroseconds(rolVecServoUS);
+  servo_yaw.writeMicroseconds(sidVecServoUS);
 
   usArray[0] = rolVecServoUS;
   usArray[1] = sidVecServoUS;
