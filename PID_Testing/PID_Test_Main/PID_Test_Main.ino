@@ -176,15 +176,15 @@ void loop(void)
 
 void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quaternion dir, double usArray[], double DCM[][3]){
   
-  /*newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
-  newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();*/
+  newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
+  newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();
 
   /*errorDir = newDir - dir;
   errorRol1 = newRoll1 - rollVec1;
   errorRol2 = newRoll2 - rollVec2;*/
   
-  double rolVecServoAngle = asin(rollVec1.z());
-  double sidVecServoAngle = asin(rollVec2.z());
+  double rolVecServoAngle = asin(newRollVec1z);
+  double sidVecServoAngle = asin(newRollVec2z);
 
   //Serial.printf("%f   %f\n", rolVecServoAngle, sidVecServoAngle);
 
