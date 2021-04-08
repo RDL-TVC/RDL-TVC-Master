@@ -144,15 +144,15 @@ void loop(void)
   if (firstRun == 1){
     firstRun = firstRun - 1;
     
-    /*DCM[0][0] = rollVec2.x();
+    DCM[0][0] = rollVec2.x();
     DCM[1][0] = rollVec2.y();
     DCM[2][0] = rollVec2.z();
     DCM[0][1] = rollVec1.x();
     DCM[1][1] = rollVec1.y();
-    DCM[2][1] = rollVec2.z();
+    DCM[2][1] = rollVec1.z();
     DCM[0][2] = dir.x();
     DCM[1][2] = dir.y();
-    DCM[2][2] = dir.z();*/
+    DCM[2][2] = dir.z();
 
     /*imu::Quaternion newDir = dir;
     imu::Quaternion newRoll1 = rollVec1;
@@ -164,10 +164,10 @@ void loop(void)
   
   Serial.printf("%f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec1.x(), rollVec1.y(), rollVec1.z());
 
-  /*double newDirX = DCM[0][0] * dir.x() + DCM[0][1] * dir.y() + DCM[0][2] * dir.z();
+  double newDirX = DCM[0][0] * dir.x() + DCM[0][1] * dir.y() + DCM[0][2] * dir.z();
   double newDirY = DCM[1][0] * dir.x() + DCM[1][1] * dir.y() + DCM[1][2] * dir.z();
   double newDirZ = DCM[2][0] * dir.x() + DCM[2][1] * dir.y() + DCM[2][2] * dir.z();
-  Serial.printf("%f   %f   %f\n", newDirX, newDirY, newDirZ);*/
+  Serial.printf("%f   %f   %f\n", newDirX, newDirY, newDirZ);
   
   //Serial.printf("%f   %f\n", usArray[0], usArray[1]);
 }
