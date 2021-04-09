@@ -2,7 +2,6 @@
 float* PID(float error[]){
   static float adj[2] = {0, 0}; 
 
-  
   const float P = 0;
   const float I = 0;
   const float D = 0;
@@ -11,8 +10,8 @@ float* PID(float error[]){
   float lastErrorPitch;
   float lastErrorYaw;
 
-  float sumPitch;
-  float sumYaw;
+  float sumPitch = 0;
+  float sumYaw = 0;
 
   sumPitch += error[0] * (dTime);
   sumYaw += error[1] * (dTime);

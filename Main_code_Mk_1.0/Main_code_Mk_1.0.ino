@@ -1,5 +1,5 @@
-#include "Log_Functions.h"
-#include "Pressure_Altitude.h"
+//#include "Log_Functions.h"
+//#include "Pressure_Altitude.h"
 
 #include <Wire.h>
 #include <SPI.h>
@@ -34,10 +34,9 @@ Adafruit_INA260 ina260 = Adafruit_INA260();
 Servo servoPitch;
 Servo servoYaw;
 
-int currentState = 0; // State of the state machine to know which flight function to call. Starts at startup.
-  float currentAlt;
-  float lastAlt;
+int currentState = 1; // State of the state machine to know which flight function to call. Starts at startup.
 
+float alts[2];
 float orient[16];
 
 // PID variables
@@ -51,8 +50,11 @@ const double P = 1;
 const double I = .1;
 const double D = .2;
 
+elapsedMillis buzzerTime = 0;
+
 void setup() {
   Serial.begin(115200);
+  Serial.printf("Begin test:\n");
 
   // Initializing sensors and center equipment
   indicatorSetup();
@@ -63,8 +65,6 @@ void setup() {
   servoSetup();
   miscSetup();
 
-  //TODO Mario powerup sound for "might work"!
-  tone(BUZZER, 3000, 1000); //Victory Screech
 }
 
 void loop() {
@@ -80,25 +80,25 @@ int callFlightFunc(int state) {
   */
   int nextState = state;
   switch(state) {
-    case 1 :
+    case 0 :
       nextState = startup();
       break;
-    case 2 :
+    case 1 :
       nextState = groundidle();
       break;
-    case 3 :
+    case 2 :
       nextState = boost();
       break;
-    case 4 :
+    case 3 :
       nextState = burnout();
       break;
-    case 5 :
+    case 4 :
       nextState = freefall();
       break;
-    case 6 :
+    case 5 :
       nextState = chute();
       break;           
-    case 7 :
+    case 6 :
       nextState = landing();
       break;
     default : 
@@ -107,48 +107,45 @@ int callFlightFunc(int state) {
 }
 
 int startup() {
-  int nextState = 1;
+  int nextState = 0;
 
-  if(digitalRead(armingPin1) == HIGH && digitalRead(armingPin2) == HIGH) {
-    nextState = 2;
-    //Print to event string
+  if(1) { //digitalRead(armingPin1) == HIGH && digitalRead(armingPin2) == HIGH) {
+    nextState = 1;
+    Serial.printf("Rocket armed: Startup-->Groundidle\n");
+    delay(1000);
+    alts[1] = 0;
+    alts[2] = 0;
+    getAlt(alts);
   }
 
   return nextState;
 }
 
 int groundidle() {
-  int nextState = 2;
+  int nextState = 1;
+  if (buzzerTime >= 1000) {
+    buzzerTime = 0;
+    tone(BUZZER, 4000, 500);
+  }
 
+  getAlt(alts);
   orientation(orient);
-  if (orient[7] >= 12) {
-    nextState = 3;
+  
+  if (orient[7] >= 12) { //if acceleration in the x direction (towards nosecone) is greater than 12
+    nextState = 2;
+    tone(BUZZER, 4000, 1000); //Victory Screech: runs buzzer for 1s when liftoff is detected
+    Serial.printf("Liftoff detected: Groundidle-->Boost\n");
+    delay(1000);
   }
 
   return nextState;
-  
-  /*
-  float* alts = altSensor.getAlt();
-  orientation(orient);
-  
-  currentAlt = alts[0];
-  lastAlt = alts[1];
-  
-  dataLog.logData(alts,orient);
-  
-  if (orient[2] >= accelThreshold) { // TODO: placeholder values that need to be changed once data format has been determined.
-    nextState = 3;
-    //initPID();
-    //unlockServos();
-  }
-  */
 }
 
 //TODO find acceleration vector compared to direction vector to see which component feels gravity
 int boost() {
-  int nextState = 3;
-  tone(BUZZER, 3000, 1000); //runs buzzer for 1s when liftoff is detected
-  
+  int nextState = 2;
+
+  getAlt(alts);
   orientation(orient);
   float* gimbalAngle = findGimbalAngles(orient);
   float* servoAngle = PID(gimbalAngle);
@@ -156,92 +153,81 @@ int boost() {
   servoPitch.writeMicroseconds(servoAngle[0]);
   servoYaw.writeMicroseconds(servoAngle[1]);
 
-  /*
-  float accelMag = sqrt(orient[7]*orient[7] + orient[8]*orient[8] + orient[9]*orient[9]);
-  if (accelMag <= ) {
-    nextState = 4;
-  } */
+  float accelForward = orient[7]*orient[1]+orient[8]*orient[2]+orient[9]*orient[3];  //dot product of acceleration and direction vectors
+  //Serial.printf("acceleration = %f\n", accelForward);
+  if (accelForward <= 5  || alts[2] > 5) {  //if acceleration in the direction of the rocket is less than 5 m/s2, assume burnout or if apogee is detected without burnout (decreasing altitude)
+    nextState = 3;
+    servoPitch.write(90);
+    servoYaw.write(90);
+    Serial.printf("Burnout detected: Boost-->Burnout\n");
+    delay(1000);
+  } 
+
   return nextState;
 }
 
 int burnout(){
-  int nextState = 4;
+  int nextState = 3;
 
-  float* alts = altSensor.getAlt();
+  getAlt(alts);
   orientation(orient);
   
-  currentAlt = alts[0];
-  lastAlt = alts[1];
-  
-  dataLog.logData(alts,orient);
-
-  if (alt < lastAlt){
-    nextState = 5;
+  if (alts[2] < 5){ /*1560 is placeholder*/
+    nextState = 4;
+    Serial.printf("Apogee detected: Burnout-->Freefall\n");
+    delay(1000);
   }
 
   return nextState;
 }
 
 int freefall(){
-  int nextState = 5;
+  int nextState = 4;
 
-  //chuteDeployAltitude = 1; //TODO: Determine threshold altitude for deploying parachutes
+  //chuteDeployAltitude = 1; //Determine threshold altitude for deploying parachutes; commented out due to immediate chute deployment upon reaching apogee
   
-  float* alts = altSensor.getAlt();
+  getAlt(alts);
   orientation(orient);
 
-  currentAlt = alts[0];
-  lastAlt = alts[1];
-  
-  dataLog.logData(alts,orient);
-
-  if (alt <= chuteDeployAltitude){
-    nextState = 6;
-    //deployChutes()
+  if (alts[0] > 1550){ //alt <= chuteDeployAltitude; 1560 placeholder altitude
+    nextState = 5;
+    //deployChutes();
+    Serial.printf("Chute Deployment Altitude detected: Freefall-->Chute\n");
+    delay(1000);
   }
 
   return nextState;
 }
 
 int chute(){
-  int nextState = 6;
+  int nextState = 5;
 
-  float* alts = altSensor.getAlt();
+  getAlt(alts);
   orientation(orient);
 
-  currentAlt = alts[0];
-  lastAlt = alts[1];
+  float accelMag = sqrt(orient[7]*orient[7]+orient[8]*orient[8]+orient[9]*orient[9]);
 
-  float lastAccel = 0; //placeholder
-  
-  dataLog.logData(alts,orient);
-
-  if (orient[2] >= lastAccel){
-    nextState = 0; //Placeholder for failure state if parachutes do not deploy
-  }else if (alt >= lastAlt){
-    nextState = 7;
+  if (accelMag >= 9){ //9 m/s2 to account for gravity once landed
+    nextState = 6; 
+    Serial.printf("Landing detected: Chute-->Landing\n");
+    delay(1000);
   }
-
-  lastAccel = orient[2];
-
+  
   return nextState;
 }
 
 int landing(){
-  int nextState = 7;
+  int nextState = 6;
 
-  writeToSD(); //Under current conditions, this will run in a loop indefitely. Either the main loop should stop after landing or the write function call should be called at the end of chute().
+  //writeToSD(); //Under current conditions, this will run in a loop indefitely. Either the main loop should stop after landing or the write function call should be called at the end of chute().
 
   return nextState;
 }
 
+
 int failure() {
-  float* alts = altSensor.getAlt();
   orientation(orient);
-  
-  currentAlt = alts[0];
-  lastAlt = alts[1];
-  
-  dataLog.logData(alts,orient);
-  return 0;
+  Serial.printf("Failure\n");
+  while(1);
+  return 7;
 }
