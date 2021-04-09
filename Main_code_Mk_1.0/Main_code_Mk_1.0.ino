@@ -64,7 +64,7 @@ void setup() {
   miscSetup();
 
   //TODO Mario powerup sound for "might work"!
-  tone(BUZZER, 3000, 1000); //Victory Screech
+  tone(BUZZER, 4000, 1000); //Victory Screech
 }
 
 void loop() {
@@ -147,7 +147,7 @@ int groundidle() {
 //TODO find acceleration vector compared to direction vector to see which component feels gravity
 int boost() {
   int nextState = 3;
-  tone(BUZZER, 3000, 1000); //runs buzzer for 1s when liftoff is detected
+  tone(BUZZER, 4000, 1000); //runs buzzer for 1s when liftoff is detected
   
   orientation(orient);
   float* gimbalAngle = findGimbalAngles(orient);
