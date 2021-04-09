@@ -174,8 +174,15 @@ void loop(void)
 
 //argument: double DCM[][3]
 
+double total[2] = {0,0};
+double lastErrors[2] = {0,0};
+double proComps[2];
+double intComps[2];
+double derComps[2];
+int PIDLastMill;
+
 void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quaternion dir, double usArray[], double DCM[][3]){
-  
+
   newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
   newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();
 
@@ -197,6 +204,49 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
   servo_pitch.writeMicroseconds(rolVecServoUS);
   servo_yaw.writeMicroseconds(sidVecServoUS);
 
+  PIDLastMill = millis();
+  
   usArray[0] = rolVecServoUS;
   usArray[1] = sidVecServoUS;
+}
+
+void Proportional(double angleRol, double angleSid, double propComps[]){
+  double pCoef = 0.2;
+  double errorRol = -angleRol;
+  double errorSid = -angleSid;
+
+  propComps[0] = errorRol * pCoef;
+  propComps[1] = errorSid * pCoef;
+  
+}
+
+void Integral(double angleRol, double angleSid, double total[], double intComps[]){
+  double iCoef = 0.2;
+  double errorRol = -angleRol;
+  double errorSid = -angleSid;
+
+  int dt = millis()-PIDLastMill;
+  total[0] = total[0] + errorRol * (dt/1000);
+  total[1] = total[1] + errorSid * (dt/1000);
+
+  intComps[0] = total[0] * iCoef;
+  intComps[1] = total[1] * iCoef;
+  
+}
+
+void Derivative(double angleRol, double angleSid, double lastErrors[]){
+  double dCoef = 0.2;
+  double errorRol = -angleRol;
+  double errorSid = -angleSid;
+
+  int dt = millis()-PIDLastMill;
+  double dErrRol = errorRol-lastErrors[0];
+  double dErrSid = errorSid-lastErrors[1];
+
+  derComps[0] = -(dErrRol/dt) * dCoef;
+  derComps[1] = -(dErrSid/dt) * dCoef;
+
+  lastErrors[0] = errorRol;
+  lastErrors[1] = errorSid;
+  
 }
