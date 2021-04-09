@@ -22,14 +22,14 @@ void indicatorSetup() {
 
     //Piezo buzzer - plays for 2 seconds
     int freq = 523; //Placeholder - High C 
-    tone(BUZZER, freq, 2000);
+    tone(BUZZER, freq, 3000);
     delay(2000);
 }
 
 //SD card
 void SDSetup() {
   //plays low tone to indicate function start
-  tone(BUZZER, 349);
+  tone(BUZZER, 3000);
 
   Serial.print("Initializing SD card...");
                                                                                                                                               
@@ -41,7 +41,7 @@ void SDSetup() {
     //indicates SD failed, plays lower note
     noTone(BUZZER);
     delay(100);
-    tone(BUZZER, 294, 3000);
+    tone(BUZZER, 2000, 3000);
     delay(3000);   
     while(1); //infinite loop prevents it from reaching other code - no else {} needed 
   }
@@ -50,16 +50,16 @@ void SDSetup() {
   //indicates SD initialized
   noTone(BUZZER);
   delay(100);
-  tone(BUZZER, 349, 1000);
+  tone(BUZZER, 3000, 1000);
   delay(1000);
-  tone(BUZZER, 523, 1000);
+  tone(BUZZER, 4000, 1000);
   delay(1000);
 }
 
 //Ina260
 void inaSetup() {
   //plays low tone to indicate function start
-  tone(BUZZER, 349);
+  tone(BUZZER, 3000);
 
   //keeps running until ina found
   if (!ina260.begin()) {
@@ -71,9 +71,9 @@ void inaSetup() {
   //indicates INA found
   noTone(BUZZER);
   delay(100);
-  tone(BUZZER, 349, 1000);
+  tone(BUZZER, 3000, 1000);
   delay(1000);
-  tone(BUZZER, 523, 1000);
+  tone(BUZZER, 4000, 1000);
   delay(1000);
 }
 
@@ -82,7 +82,7 @@ int bnoSetup() {
   int isWorking = 0;
   
   //plays low tone to indicate function start
-  tone(BUZZER, 349);
+  tone(BUZZER, 3000);
  
   /* Initialise the sensor */
   if(!bno.begin())
@@ -98,9 +98,9 @@ int bnoSetup() {
   //indicates bno was successfully found
   noTone(BUZZER);
   delay(100);
-  tone(BUZZER, 349, 1000);
+  tone(BUZZER, 3000, 1000);
   delay(1000);
-  tone(BUZZER, 440);
+  tone(BUZZER, 3500);
   
   uint8_t cal, gyro, accel, mag = 0;
   bno.getCalibration(&cal, &gyro, &accel, &mag);
@@ -133,9 +133,9 @@ int bnoSetup() {
   //indicates bno successfully calibrated
   noTone(BUZZER);
   delay(100);
-  tone(BUZZER, 440, 1000);
+  tone(BUZZER, 3500, 1000);
   delay(1000);
-  tone(BUZZER, 523, 1000);
+  tone(BUZZER, 4000, 1000);
   delay(1000);
 
   return isWorking;
@@ -146,7 +146,7 @@ int bmpSetup(){
   int isWorking = 0;
   
   //plays low tone to indicate function start
-  tone(BUZZER, 349);
+  tone(BUZZER, 3000);
   
   if (!bmp.begin_I2C()) {
     //error - could not find sensor
@@ -164,9 +164,9 @@ int bmpSetup(){
   //indicates bmp was successfully found
   noTone(BUZZER);
   delay(100);
-  tone(BUZZER, 349, 1000);
+  tone(BUZZER, 3000, 1000);
   delay(1000);
-  tone(BUZZER, 523,1000);
+  tone(BUZZER, 4000,1000);
   delay(1000);
   
   return isWorking;
@@ -228,7 +228,7 @@ void servoSetup() {
 //Mosfet charges
 void miscSetup() {
   //plays low tone to indicate function start
-  tone(BUZZER, 349);
+  tone(BUZZER, 3000);
   
   pinMode(chuteCharge1,OUTPUT);
   pinMode(chuteCharge2,OUTPUT);
@@ -239,9 +239,9 @@ void miscSetup() {
   //indicates chute charges and arming buttons initialized
   noTone(BUZZER);
   delay(100);
-  tone(BUZZER, 349, 1000);
+  tone(BUZZER, 3000, 1000);
   delay(1000);
-  tone(BUZZER, 523, 1000);
+  tone(BUZZER, 4000, 1000);
   delay(1000);
 }
  
