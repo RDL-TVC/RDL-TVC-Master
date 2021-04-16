@@ -99,21 +99,21 @@ float* findGimbalAngles(float* orientArr) {
   return angles;
 }
 
-//alts[] = {currentAlt, maxAlt, numberOfCycles}
+//alts[] = {isWorking, currentAlt, maxAlt, numberOfCycles}
 void getAlt(float* alts) {
   if (! bmp.performReading()) {
         //error - could not perform reading
         Serial.println("Error: bmp388 could not perform reading");
-        return 0;
+        alts[0] = 0;
   }
-  alts[0] = bmp.readAltitude(1013.25);
+  alts[1] = bmp.readAltitude(1013.25);
 
   //if alt is less than max recorded alt for 5 cycles, then is decreasing
-  if (alts[0] >= alts[1]) {
-    alts[1] = alts[0];
-    alts[2] = 0;
+  if (alts[1] >= alts[2]) {
+    alts[2] = alts[1];
+    alts[3] = 0;
   } else {
-    alts[2] = alts[2]+1;
+    ++alts[3];
   }
   //Serial.printf("Numberofcycles = %f\n", alts[2]);
   //Serial.printf("Current alt: %f\n", alts[0]);

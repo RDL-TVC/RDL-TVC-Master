@@ -36,7 +36,7 @@ Servo servoYaw;
 
 int state = 0; // State of the state machine to know which flight function to call. Starts at startup.
 
-float alts[2];
+float alts[4];
 float orient[16];
 
 // PID variables
@@ -61,7 +61,7 @@ void setup() {
   SDSetup();
   inaSetup();
   orient[0] = bnoSetup();
-  bmpSetup();
+  alts[0] = bmpSetup();
   servoSetup();
   miscSetup();
 }
@@ -94,7 +94,7 @@ void loop() {
       state = landing();
       break;
     default : 
-      state = failure(); // General failure state might need to specify different failure states.
+      state = failure(state); // Failure state wrapper - state determines type of failure (under failures.ino tab)
   }   
 }
 
@@ -105,11 +105,15 @@ int startup() {
     nextState = 1;
     Serial.printf("Rocket armed: Startup-->Groundidle\n");
     delay(1000);
-    alts[1] = 0;
+    
     alts[2] = 0;
+    alts[3] = 0;
     getAlt(alts);
+    
+    if (alts[0] == 0) {
+      nextState = failure(7);
+    }  
   }
-  
   return nextState;
 }
 
@@ -129,7 +133,6 @@ int groundidle() {
     Serial.printf("Liftoff detected: Groundidle-->Boost\n");
     delay(1000);
   }
-
   return nextState;
 }
 
@@ -147,14 +150,13 @@ int boost() {
 
   float accelForward = orient[7]*orient[1]+orient[8]*orient[2]+orient[9]*orient[3];  //dot product of acceleration and direction vectors
   //Serial.printf("acceleration = %f\n", accelForward);
-  if (accelForward <= 5  || alts[2] > 5) {  //if acceleration in the direction of the rocket is less than 5 m/s2, assume burnout or if apogee is detected without burnout (decreasing altitude)
+  if (accelForward <= 5  || alts[3] > 5) {  //if acceleration in the direction of the rocket is less than 5 m/s2, assume burnout or if apogee is detected without burnout (decreasing altitude)
     nextState = 3;
     servoPitch.write(90);
     servoYaw.write(90);
     Serial.printf("Burnout detected: Boost-->Burnout\n");
     delay(1000);
   } 
-
   return nextState;
 }
 
@@ -164,12 +166,11 @@ int burnout(){
   getAlt(alts);
   orientation(orient);
   
-  if (alts[2] < 5){ /*1560 is placeholder*/
+  if (alts[3] < 5){ /*1560 is placeholder*/
     nextState = 4;
     Serial.printf("Apogee detected: Burnout-->Freefall\n");
     delay(1000);
   }
-
   return nextState;
 }
 
@@ -181,13 +182,12 @@ int freefall(){
   getAlt(alts);
   orientation(orient);
 
-  if (alts[0] > 1550){ //alt <= chuteDeployAltitude; 1560 placeholder altitude
+  if (alts[1] > 1550){ //alt <= chuteDeployAltitude; 1560 placeholder altitude
     nextState = 5;
     //deployChutes();
     Serial.printf("Chute Deployment Altitude detected: Freefall-->Chute\n");
     delay(1000);
   }
-
   return nextState;
 }
 
@@ -204,16 +204,17 @@ int chute(){
     Serial.printf("Landing detected: Chute-->Landing\n");
     delay(1000);
   }
-  
   return nextState;
 }
 
 int landing(){
   int nextState = 6;
   tone(BUZZER, 4000,1000); //Victory Screech No.2
+
+//Under current conditions, this will run in a loop indefitely. Either the main loop should stop after landing or the write function call should be called at the end of chute().
   while(1);
 
-  //writeToSD(); //Under current conditions, this will run in a loop indefitely. Either the main loop should stop after landing or the write function call should be called at the end of chute().
+  //writeToSD(); 
 
   return nextState;
 }
