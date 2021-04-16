@@ -162,12 +162,12 @@ void loop(void)
   
   PIDFunction(rollVec1, rollVec2, dir, usArray, DCM);
   
-  Serial.printf("%f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec1.x(), rollVec1.y(), rollVec1.z());
+  //Serial.printf("%f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec1.x(), rollVec1.y(), rollVec1.z());
 
   double newDirX = DCM[0][0] * dir.x() + DCM[0][1] * dir.y() + DCM[0][2] * dir.z();
   double newDirY = DCM[1][0] * dir.x() + DCM[1][1] * dir.y() + DCM[1][2] * dir.z();
   double newDirZ = DCM[2][0] * dir.x() + DCM[2][1] * dir.y() + DCM[2][2] * dir.z();
-  Serial.printf("%f   %f   %f\n", newDirX, newDirY, newDirZ);
+  //Serial.printf("%f   %f   %f\n", newDirX, newDirY, newDirZ);
   
   //Serial.printf("%f   %f\n", usArray[0], usArray[1]);
 }
@@ -198,8 +198,10 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
   double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG;
   double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG;
 
-  double rolVecServoUS = map(90+rolDeg/.4285, -90, 90, 900, 2100);
-  double sidVecServoUS = map(90+sidDeg/.4285, -90, 90, 900, 2100);
+  double rolVecServoUS = map(rolDeg, -90, 90, 900, 2100);
+  double sidVecServoUS = map(sidDeg, -90, 90, 900, 2100);
+
+  Serial.printf("DerRol: %f, DerSid: %f, Order Rol: %f, Order Sid %f, rolUS: %f, sidUS: %f\n",derComps[0],derComps[1],rolDeg,sidDeg,rolVecServoUS,sidVecServoUS);
 
   servo_pitch.writeMicroseconds(rolVecServoUS);
   servo_yaw.writeMicroseconds(sidVecServoUS);
@@ -211,7 +213,7 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
 }
 
 void Proportional(double angleRol, double angleSid, double proComps[]){
-  double pCoef = 0.5;
+  double pCoef = 0;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
 
@@ -235,16 +237,21 @@ void Integral(double angleRol, double angleSid, double total[], double intComps[
 }
 
 void Derivative(double angleRol, double angleSid, double lastErrors[], double derComps[]){
-  double dCoef = 0.2;
+  double dCoef = 0.05;
+  double tConst = 1000;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
+
+  delay(10);
 
   int dt = millis()-PIDLastMill;
   double dErrRol = errorRol-lastErrors[0];
   double dErrSid = errorSid-lastErrors[1];
 
-  derComps[0] = -(dErrRol/(dt/1000)) * dCoef;
-  derComps[1] = -(dErrSid/(dt/1000)) * dCoef;
+  derComps[0] = -(dErrRol/dt) * dCoef * tConst;
+  derComps[1] = -(dErrSid/dt) * dCoef * tConst;
+
+  //Serial.printf("Time: %f, Change Rol: %f, Change Sid: %f, Order Rol: %f, Order Sid: %f\n",(double)dt,dErrRol,dErrSid,derComps[0],derComps[1]);
 
   lastErrors[0] = errorRol;
   lastErrors[1] = errorSid;
