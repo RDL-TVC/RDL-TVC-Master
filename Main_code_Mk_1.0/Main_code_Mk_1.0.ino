@@ -34,7 +34,7 @@ Adafruit_INA260 ina260 = Adafruit_INA260();
 Servo servoPitch;
 Servo servoYaw;
 
-int currentState = 1; // State of the state machine to know which flight function to call. Starts at startup.
+int state = 0; // State of the state machine to know which flight function to call. Starts at startup.
 
 float alts[2];
 float orient[16];
@@ -64,46 +64,38 @@ void setup() {
   bmpSetup();
   servoSetup();
   miscSetup();
-
 }
 
 void loop() {
-
-  currentState = callFlightFunc(currentState); // added a function rapper to make more modular, however unlikely to be needed
-
-}
-
-int callFlightFunc(int state) {
   /* 
   Intakes the current state of the state machine and runs the appropriate function for that state.
   Returns the next state of the state machine
   */
-  int nextState = state;
   switch(state) {
     case 0 :
-      nextState = startup();
+      state = startup();
       break;
     case 1 :
-      nextState = groundidle();
+      state = groundidle();
       break;
     case 2 :
-      nextState = boost();
+      state = boost();
       break;
     case 3 :
-      nextState = burnout();
+      state = burnout();
       break;
     case 4 :
-      nextState = freefall();
+      state = freefall();
       break;
     case 5 :
-      nextState = chute();
+      state = chute();
       break;           
     case 6 :
-      nextState = landing();
+      state = landing();
       break;
     default : 
-      nextState = failure(); // General failure state might need to specify different failure states.
-  } return nextState;
+      state = failure(); // General failure state might need to specify different failure states.
+  }   
 }
 
 int startup() {
@@ -117,7 +109,7 @@ int startup() {
     alts[2] = 0;
     getAlt(alts);
   }
-
+  
   return nextState;
 }
 
@@ -218,16 +210,10 @@ int chute(){
 
 int landing(){
   int nextState = 6;
+  tone(BUZZER, 4000,1000); //Victory Screech No.2
+  while(1);
 
   //writeToSD(); //Under current conditions, this will run in a loop indefitely. Either the main loop should stop after landing or the write function call should be called at the end of chute().
 
   return nextState;
-}
-
-
-int failure() {
-  orientation(orient);
-  Serial.printf("Failure\n");
-  while(1);
-  return 7;
 }

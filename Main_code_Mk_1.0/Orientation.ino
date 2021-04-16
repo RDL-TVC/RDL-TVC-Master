@@ -115,6 +115,6 @@ void getAlt(float* alts) {
   } else {
     alts[2] = alts[2]+1;
   }
-  Serial.printf("Numberofcycles = %f\n", alts[2]);
+  //Serial.printf("Numberofcycles = %f\n", alts[2]);
   //Serial.printf("Current alt: %f\n", alts[0]);
 }
