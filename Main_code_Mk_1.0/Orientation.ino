@@ -79,6 +79,7 @@ imu::Quaternion getInverse(imu::Quaternion q) {
   return inv;
 }
 
+/*
 //Apply DCM to find relative axis
 float* findGimbalAngles(float* orientArr) {
   //[pitchAngle, yawAngle]
@@ -98,6 +99,7 @@ float* findGimbalAngles(float* orientArr) {
 
   return angles;
 }
+*/
 
 //alts[] = {isWorking, currentAlt, maxAlt, numberOfCycles}
 void getAlt(float* alts) {

@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-//#include "Log_Functions.h"
-//#include "Pressure_Altitude.h"
-
-=======
->>>>>>> d5738b26130636daa1ec83bcebea7db8e0881b34
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
@@ -144,7 +138,7 @@ int boost() {
 
   getAlt(alts);
   orientation(orient);
-  float* gimbalAngle = findGimbalAngles(orient);
+  //float* gimbalAngle = findGimbalAngles(orient);
   float servoAngle[] = {90, 90}; //PID(gimbalAngle);
 
   servoPitch.writeMicroseconds(servoAngle[0]);
@@ -190,7 +184,6 @@ int freefall(){
   if (alts[1] > 1550){ //alt <= chuteDeployAltitude; 1560 placeholder altitude
     nextState = 5;
     previousStage = 4;
-    //deployChutes();
     Serial.printf("Chute Deployment Altitude detected: Freefall-->Chute\n");
     delay(1000);
   }
