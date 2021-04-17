@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+//#include "Log_Functions.h"
+//#include "Pressure_Altitude.h"
+
+=======
+>>>>>>> d5738b26130636daa1ec83bcebea7db8e0881b34
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
