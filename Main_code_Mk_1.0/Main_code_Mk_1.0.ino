@@ -267,4 +267,5 @@ int failure() {
   Serial.printf("Failure\n");
   while(1);
   int nextStage = 7;
+  return nextStage;
 }
