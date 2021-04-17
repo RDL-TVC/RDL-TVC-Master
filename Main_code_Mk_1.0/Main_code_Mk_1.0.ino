@@ -40,17 +40,6 @@ float orient[16];
 bool charge1 = true;
 bool charge2 = true;
 
-// PID variables
-double sumPitch = 0;
-double sumRoll = 0;
-double lastErrorPitch = 0;
-double lastErrorRoll = 0;
-int lastTime;
-
-const double P = 1;
-const double I = .1;
-const double D = .2;
-
 elapsedMillis timer = 0;
 elapsedMillis timer2 = 0;
 int cycle = 0;
@@ -150,7 +139,7 @@ int boost() {
   getAlt(alts);
   orientation(orient);
   float* gimbalAngle = findGimbalAngles(orient);
-  float* servoAngle = PID(gimbalAngle);
+  float servoAngle[] = {90, 90}; //PID(gimbalAngle);
 
   servoPitch.writeMicroseconds(servoAngle[0]);
   servoYaw.writeMicroseconds(servoAngle[1]);
