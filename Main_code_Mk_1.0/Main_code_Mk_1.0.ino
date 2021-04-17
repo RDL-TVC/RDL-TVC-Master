@@ -1,6 +1,10 @@
 //#include "Log_Functions.h"
 //#include "Pressure_Altitude.h"
 
+#include "Main_code_Mk_1.0 - Failures.ino"
+#include "Orientation.ino"
+#include "Sensor_Startup_Functions.ino"
+
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
@@ -35,9 +39,13 @@ Servo servoPitch;
 Servo servoYaw;
 
 int state = 0; // State of the state machine to know which flight function to call. Starts at startup.
+int previousStage = 0; //place to store previous flight function
 
 float alts[4];
 float orient[16];
+
+bool charge1 = true;
+bool charge2 = true;
 
 // PID variables
 double sumPitch = 0;
@@ -50,7 +58,9 @@ const double P = 1;
 const double I = .1;
 const double D = .2;
 
-elapsedMillis buzzerTime = 0;
+elapsedMillis timer = 0;
+elapsedMillis timer2 = 0;
+int cycle = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -103,6 +113,7 @@ int startup() {
 
   if(1) { //digitalRead(armingPin1) == HIGH && digitalRead(armingPin2) == HIGH) {
     nextState = 1;
+    previousStage = 0;
     Serial.printf("Rocket armed: Startup-->Groundidle\n");
     delay(1000);
     
@@ -111,7 +122,8 @@ int startup() {
     getAlt(alts);
     
     if (alts[0] == 0) {
-      nextState = failure(7);
+      timer = 0;
+      nextState = chute();
     }  
   }
   return nextState;
@@ -119,16 +131,18 @@ int startup() {
 
 int groundidle() {
   int nextState = 1;
-  if (buzzerTime >= 1000) {
-    buzzerTime = 0;
+  if (timer >= 1000) {
+    timer = 0;
     tone(BUZZER, 4000, 500);
   }
 
   getAlt(alts);
   orientation(orient);
-  
-  if (orient[7] >= 12) { //if acceleration in the x direction (towards nosecone) is greater than 12
+
+  /* if acceleration in the x direction (towards nosecone) is greater than 12 */
+  if (orient[7] >= 12) { 
     nextState = 2;
+    previousStage = 1;
     tone(BUZZER, 4000, 1000); //Victory Screech: runs buzzer for 1s when liftoff is detected
     Serial.printf("Liftoff detected: Groundidle-->Boost\n");
     delay(1000);
@@ -149,9 +163,11 @@ int boost() {
   servoYaw.writeMicroseconds(servoAngle[1]);
 
   float accelForward = orient[7]*orient[1]+orient[8]*orient[2]+orient[9]*orient[3];  //dot product of acceleration and direction vectors
-  //Serial.printf("acceleration = %f\n", accelForward);
-  if (accelForward <= 5  || alts[3] > 5) {  //if acceleration in the direction of the rocket is less than 5 m/s2, assume burnout or if apogee is detected without burnout (decreasing altitude)
+
+  /*if acceleration in the direction of the rocket is less than 5 m/s2, assume burnout or if apogee is detected without burnout (decreasing altitude) */
+  if (accelForward <= 5  || alts[3] > 5) {  
     nextState = 3;
+    previousStage = 2;
     servoPitch.write(90);
     servoYaw.write(90);
     Serial.printf("Burnout detected: Boost-->Burnout\n");
@@ -168,6 +184,7 @@ int burnout(){
   
   if (alts[3] < 5){ /*1560 is placeholder*/
     nextState = 4;
+    previousStage = 3;
     Serial.printf("Apogee detected: Burnout-->Freefall\n");
     delay(1000);
   }
@@ -184,6 +201,7 @@ int freefall(){
 
   if (alts[1] > 1550){ //alt <= chuteDeployAltitude; 1560 placeholder altitude
     nextState = 5;
+    previousStage = 4;
     //deployChutes();
     Serial.printf("Chute Deployment Altitude detected: Freefall-->Chute\n");
     delay(1000);
@@ -199,8 +217,33 @@ int chute(){
 
   float accelMag = sqrt(orient[7]*orient[7]+orient[8]*orient[8]+orient[9]*orient[9]);
 
+  /*if the acceleration is below a certain threshold, above a certain altitude (with the exception of altitude data loss), 
+      and the previous stage was not a ground stage, deploy chute charges */
+  if (accelMag < 2 && (alts[0] != 1 || alts[1] >= 1600) && (previousStage >= 2 && previousStage != 6)) { 
+    //If less than 1 second has passed and the first charge has not deployed, send a charge through the MOSFET1
+    if (timer <= 1000 && charge1) {
+      digitalWrite(chuteCharge1, HIGH);
+      charge1 = false;
+    } else if (timer >= 1000 && charge2) {  //If 1 second has passed and the second charge has not deployed, send a charge through the MOSFET2
+      digitalWrite(chuteCharge2, HIGH);
+      charge2 = false;
+    } else if (!charge1 && !charge2){  //if both charges have been deployed and acceleration still reads freefall (still going through first if-statement), start a second timer
+      ++cycle;
+      if (cycle == 1) {  //so that timer2 only resets once
+        timer2 = 0;
+      }
+      if (timer2 >= 1000) {  //if 1 second has passed with no change in acceleration, go to noChute failure
+        timer = 0;
+        chute1 = true;
+        chute2 = true;
+        nextState = 5;
+      }
+    } else {}
+  }
+
   if (accelMag >= 9){ //9 m/s2 to account for gravity once landed
     nextState = 6; 
+    previousStage = 5;
     Serial.printf("Landing detected: Chute-->Landing\n");
     delay(1000);
   }
