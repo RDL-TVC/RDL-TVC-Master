@@ -1,10 +1,3 @@
-//#include "Log_Functions.h"
-//#include "Pressure_Altitude.h"
-
-#include "Main_code_Mk_1.0 - Failures.ino"
-#include "Orientation.ino"
-#include "Sensor_Startup_Functions.ino"
-
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
@@ -104,7 +97,7 @@ void loop() {
       state = landing();
       break;
     default : 
-      state = failure(state); // Failure state wrapper - state determines type of failure (under failures.ino tab)
+      state = failure(); // Failure state wrapper - state determines type of failure (under failures.ino tab)
   }   
 }
 
@@ -234,8 +227,8 @@ int chute(){
       }
       if (timer2 >= 1000) {  //if 1 second has passed with no change in acceleration, go to noChute failure
         timer = 0;
-        chute1 = true;
-        chute2 = true;
+        charge1 = true;
+        charge2 = true;
         nextState = 5;
       }
     } else {}
