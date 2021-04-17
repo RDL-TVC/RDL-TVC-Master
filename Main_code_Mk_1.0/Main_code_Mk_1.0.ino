@@ -1,10 +1,6 @@
 //#include "Log_Functions.h"
 //#include "Pressure_Altitude.h"
 
-#include "Main_code_Mk_1.0 - Failures.ino"
-#include "Orientation.ino"
-#include "Sensor_Startup_Functions.ino"
-
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
