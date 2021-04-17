@@ -261,3 +261,10 @@ int landing(){
 
   return nextState;
 }
+
+int failure() {
+  orientation(orient);
+  Serial.printf("Failure\n");
+  while(1);
+  int nextStage = 7;
+}
