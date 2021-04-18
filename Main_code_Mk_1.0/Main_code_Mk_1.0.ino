@@ -119,7 +119,6 @@ void loop() {
 
 int startup() {
   int nextState = 0;
-  //Serial.println("Waiting for button press...");
   Serial.print(digitalRead(armingPin1));
   Serial.print("   ");
   Serial.print(digitalRead(armingPin2));
@@ -127,7 +126,7 @@ int startup() {
   if(digitalRead(armingPin1) == HIGH && digitalRead(armingPin2) == HIGH) {
     ++buttonCycles;
     delay(10);
-    if (buttonCycles >= 500) {
+    if (buttonCycles >= 500) {  //hold down both buttons for 5s
       nextState = 1;
       previousState = 0;
       Serial.printf("Rocket armed: Startup-->Groundidle\n");
