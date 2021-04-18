@@ -1,6 +1,6 @@
 /* TODO
  * Find place to record quaternion data
- * Take out angle conversion to degrees and fix mapping (in PID tab) to reflect that
+ * Insert way to report if the bno disconnects
  * Find alternate way to measure roll angle without the jump
  */
 void orientation(float orient[]) {
@@ -108,7 +108,9 @@ void getAlt(float* alts) {
         Serial.println("Error: bmp388 could not perform reading");
         alts[0] = 0;
   }
-  alts[1] = bmp.readAltitude(1013.25);
+  
+  alts[0] = 1;
+  alts[1] = bmp.readAltitude(1013.25) - groundAltitude;
 
   //if alt is less than max recorded alt for 5 cycles, then is decreasing
   if (alts[1] >= alts[2]) {
@@ -117,6 +119,11 @@ void getAlt(float* alts) {
   } else {
     ++alts[3];
   }
-  //Serial.printf("Numberofcycles = %f\n", alts[2]);
-  //Serial.printf("Current alt: %f\n", alts[0]);
+  /*
+  Serial.printf("Numberofcycles = %f      ", alts[3]);
+  Serial.printf("Max alt: %f    ", alts[2]);
+  Serial.printf("Current alt: %f       ", alts[1]);
+  Serial.printf("time taken for a cycle: %d\n", timer2*1);
+  */
+  timer2 = 0;
 }

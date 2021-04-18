@@ -21,8 +21,7 @@ void indicatorSetup() {
     digitalWrite(LED2,LOW);
 
     //Piezo buzzer - plays for 2 seconds
-    int freq = 2000;
-    tone(BUZZER, freq, 1000);
+    tone(BUZZER, 4000, 1000);
     delay(2000);
 }
 
@@ -34,7 +33,7 @@ void SDSetup() {
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) {
     Serial.println("Card failed, or not present");
-    // don't do anything more
+    //don't do anything more
     
     //indicates SD failed, plays lower note
     noTone(BUZZER);
@@ -43,7 +42,7 @@ void SDSetup() {
     while (1); //infinite loop prevents it from reaching other code - no else {} needed 
   }
   
-  Serial.println("card initialized.\n");
+  Serial.println("card initialized.");
 
 }
 
@@ -59,6 +58,13 @@ void inaSetup() {
     while (1);
   }
   Serial.print("Found INA260 chip\n");
+
+  float total = 0;
+  for (int i = 0; i < 20; ++i) {
+    total += ina260.readBusVoltage();
+  }
+  avgVoltage = total/20;
+  Serial.printf("Average Voltage: %f\n", avgVoltage);
 }
 
 //Bno055
@@ -121,10 +127,6 @@ int bnoSetup() {
 }
 
 //Bmp388
-  /* TODO
-   * take 20 measurements and average them to find the tare altitude
-   * And subtract from current altitude measurements
-   */
 int bmpSetup(){
   int isWorking = 0;
   
@@ -145,6 +147,21 @@ int bmpSetup(){
 
   isWorking = 1;
   Serial.println("bmp found");
+
+  getAlt(alts);  //call once to get rid of garbage values
+  alts[1] = 0;
+  alts[2] = 0;
+  alts[3] = 0;
+    
+  //take an average of 20 altitude values to find the groundAltitude
+  float total = 0;
+  for (int i = 0; i < 20; ++i) {
+    getAlt(alts);
+    total += alts[1];
+  }
+  groundAltitude= total/20;
+  Serial.printf("Ground Altitude: %f\n",groundAltitude);
+  
   return isWorking;
 }
 
