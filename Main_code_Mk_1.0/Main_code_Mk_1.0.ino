@@ -47,6 +47,7 @@ elapsedMillis timer2 = 0;
 int errorCycle = 0;
 int buttonCycles = 0;
 
+/* Initializes all the sensors, the required variables, and calibrates data */
 void setup() {
   Serial.begin(115200);
   Serial.printf("Begin test:\n");
@@ -65,8 +66,7 @@ void loop() {
   /* check first for sensor errors
    * BMP388 stops working
    * BNO055 stops working
-   * INA260 reads an average voltage drop of 6V
-   */
+   * INA260 reads an average voltage drop of 6V */
   if (alts[0] == 0 || orient[0] == 0 || ina260.readBusVoltage() <= (avgVoltage - 6000) ) { 
       ++errorCycle;
       //if the problem continues for 10 cycles in a row, proceed to correction
@@ -117,6 +117,12 @@ void loop() {
   }   
 }
 
+/* 
+ *  int startup(): 
+ *  Beginning state - may be placed in setup()
+ *  Waits for button push to arm the rocket and to reset altitude measurements 
+ *  returns the nextState of groundidle() if successful 
+ */
 int startup() {
   int nextState = 0;
   Serial.print(digitalRead(armingPin1));
@@ -145,6 +151,12 @@ int startup() {
   return nextState;
 }
 
+/* 
+ *  int groundidle(): 
+ *  State in which the rocket is armed but ignition has not yet been set off
+ *  Plays warning sound and collects altitude + orientation data but otherwise stays inactive
+ *  Detects liftoff or boost() through an upwards acceleration measurement 
+ */
 int groundidle() {
   int nextState = 1;
   if (timer >= 1000) {
@@ -165,6 +177,15 @@ int groundidle() {
   return nextState;
 }
 
+/* 
+ *  int boost():
+ *  State in which the rocket is under powered flight
+ *  Collects and stores altitude and orientation data
+ *  Determines gimbal and servo angle through a DCM applied to the orientation data
+ *  Uses a PID loop to move the servo to the desired angle
+ *  Detects both Burnout and Freefall - Burnout through decreasing acceleration forward and Freefall through decreasing altitude
+ *  May bypass the Burnout stage completely if the acceleration data forward fails
+ */
 int boost() {
   int nextState = 2;
 
@@ -195,6 +216,12 @@ int boost() {
   return nextState;
 }
 
+/* 
+ *  int burnout():
+ *  State in which the rocket exits powered flight until apogee is reached
+ *  Collects and stores altitude and orientation data
+ *  Detects decreasing altitude to signal that apogee has been reached, and that the rocket is in freefall()
+ */
 int burnout(){
   int nextState = 3;
 
@@ -209,6 +236,13 @@ int burnout(){
   return nextState;
 }
 
+/*
+ * int freefall():
+ * State before reaching the alititude required to safely deploy the parachute
+ * Collects and stores altitude and orientation data
+ * Parachute currently set to deploy at apogee
+ * Skeleton for future projects that may need this state
+ */
 int freefall(){
   int nextState = 4;
 
@@ -225,6 +259,16 @@ int freefall(){
   return nextState;
 }
 
+/* 
+ *  int chute():
+ *  State for parachute deployment
+ *  Collects and stores altitude and orientation data
+ *  Doubles as an emergency state for errors - checks previous state to ensure that it does not go off while on the ground
+ *  Checks for freefall acceleration and altitude for a safe time to deploy chute
+ *  Releases two chute charges as a redundancy
+ *  If both charges fail to deploy the chute, program tries again 1 second after charge 2 until lowest altitude (20m) is reached
+ *  Detects landed gravity (similar to hovering, 9m/s2 up) for landing()
+ */
 int chute(){
   int nextState = 5;
 
@@ -271,6 +315,12 @@ int chute(){
   return nextState;
 }
 
+/*
+ * int landing():
+ * Last state where rocket is grounded after flight
+ * Plays beeping noise to be located and to signal that the last stage has been reached
+ * Saves all data to the SD card
+ */
 int landing(){
   int nextState = 6;
   if (timer >= 1000) {  //Victory Beeeps :D or over failure tone :(
@@ -284,6 +334,10 @@ int landing(){
   return nextState;
 }
 
+/*
+ * int failure():
+ * Placeholder state for failures that do not go directly to chute() or landing()
+ */
 int failure() {
   orientation(orient);
   Serial.printf("Failure\n");

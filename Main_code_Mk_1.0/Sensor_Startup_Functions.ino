@@ -1,6 +1,6 @@
-/* Collection of all the startups in the Sensor_Test_Functions:
+/* 
+ * Collection of all the startups in the Sensor_Test_Functions:
  * returns 1 if runs/successful, 0 if sensor not found (currently excempting mosfets, buzzer, and servos)
- * TODO: Organize libraries and put sensor variables/names to proper places
  */
  
 //LEDs & buzzer
