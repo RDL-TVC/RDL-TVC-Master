@@ -30,6 +30,8 @@ double intComps[2];
 double derComps[2];
 int PIDLastMill;
 
+int armingButton = 6;
+
 
 void setup(void)
 {
@@ -39,6 +41,13 @@ void setup(void)
   servo_yaw.writeMicroseconds(1500);
 
   Serial.begin(9600);
+
+  while(true){
+    if(digitalRead(armingButton) == HIGH){
+      break;
+    }
+  }
+  
   /* Initialise the sensor */
   if (!bno.begin())
   {
@@ -197,9 +206,21 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
   Integral(rolVecAngle, sidVecAngle, total, intComps);
   Derivative(rolVecAngle, sidVecAngle,lastErrors, derComps);
 
-  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG;
-  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG;
+  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG * 0.4285;
+  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG * 0.4285;
 
+  if (rolDeg > 10){
+    rolDeg = 10;
+  }else if (rolDeg < -10){
+    rolDeg = -10;
+  }
+  
+  if (sidDeg > 10){
+    sidDeg = 10;
+  }else if (sidDeg < -10){
+    sidDeg = -10;
+  }
+  
   double rolVecServoUS = map(rolDeg, -90, 90, 900, 2100);
   double sidVecServoUS = map(sidDeg, -90, 90, 900, 2100);
 
@@ -226,7 +247,7 @@ void Proportional(double angleRol, double angleSid, double proComps[]){
 }
 
 void Integral(double angleRol, double angleSid, double total[], double intComps[]){
-  double iCoef = 0.01;
+  double iCoef = 0.005;
   double tConst = 1;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
