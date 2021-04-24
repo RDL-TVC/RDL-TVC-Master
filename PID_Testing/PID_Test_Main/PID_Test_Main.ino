@@ -31,6 +31,7 @@ double derComps[2];
 int PIDLastMill;
 
 int armingButton = 6;
+int armingButton2 = 7;
 
 
 void setup(void)
@@ -43,7 +44,7 @@ void setup(void)
   Serial.begin(9600);
 
   while(true){
-    if(digitalRead(armingButton) == HIGH){
+    if(digitalRead(armingButton) == HIGH && digitalRead(armingButton2) == HIGH){
       break;
     }
   }
