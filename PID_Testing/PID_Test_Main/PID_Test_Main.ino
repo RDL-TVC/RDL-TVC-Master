@@ -31,7 +31,8 @@ double derComps[2];
 int PIDLastMill;
 
 int armingButton = 6;
-
+int armingButton2 = 7;
+int buttonCycles = 0;
 
 void setup(void)
 {
@@ -42,12 +43,22 @@ void setup(void)
 
   Serial.begin(9600);
 
-  while(true){
-    if(digitalRead(armingButton) == HIGH){
+  /*while(true){
+    if(digitalRead(armingButton) == HIGH && digitalRead(armingButton2) == HIGH){
       break;
     }
+  }*/
+  while(true){
+    if(digitalRead(armingButton) == HIGH && digitalRead(armingButton2) == HIGH) {
+      ++buttonCycles;
+      Serial.println(buttonCycles);
+      delay(10);
+      if (buttonCycles >= 500) {  //hold down both buttons for 5s
+        Serial.printf("Rocket armed: Startup-->Groundidle\n");
+        break;
+      }
+    }
   }
-  
   /* Initialise the sensor */
   if (!bno.begin())
   {
