@@ -34,6 +34,8 @@ int armingButton = 6;
 int armingButton2 = 7;
 int buttonCycles = 0;
 
+int piezoPin = 14;
+
 void setup(void)
 {
   servo_pitch.attach(SERVO_PIN_PITCH);
@@ -48,17 +50,7 @@ void setup(void)
       break;
     }
   }*/
-  while(true){
-    if(digitalRead(armingButton) == HIGH && digitalRead(armingButton2) == HIGH) {
-      ++buttonCycles;
-      Serial.println(buttonCycles);
-      delay(10);
-      if (buttonCycles >= 500) {  //hold down both buttons for 5s
-        Serial.printf("Rocket armed: Startup-->Groundidle\n");
-        break;
-      }
-    }
-  }
+  
   /* Initialise the sensor */
   if (!bno.begin())
   {
@@ -97,6 +89,8 @@ void setup(void)
     delay(1000);
   }
 
+  tone(piezoPin,4000,1000);
+
   int upDirStartTime = millis();
   int upDirCurrTime = millis();
   int remainingTime;
@@ -110,6 +104,7 @@ void setup(void)
     delay(100);
     
   }
+  tone(piezoPin,4000,1000);
   Serial.println("Direction Chosen!");
 }
 
@@ -171,6 +166,19 @@ void loop(void)
 
   if (firstRun == 1){
     firstRun = firstRun - 1;
+
+    /*while(true){
+      if(digitalRead(armingButton) == HIGH && digitalRead(armingButton2) == HIGH) {
+        ++buttonCycles;
+        Serial.println(buttonCycles);
+        delay(10);
+        if (buttonCycles >= 500) {  //hold down both buttons for 5s
+          Serial.printf("Rocket armed: Startup-->Groundidle\n");
+          tone(piezoPin,4000,1000);
+          break;
+        }
+      }
+    }*/
     
     DCM[0][0] = rollVec2.x();
     DCM[1][0] = rollVec2.y();
@@ -217,10 +225,10 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
   Integral(rolVecAngle, sidVecAngle, total, intComps);
   Derivative(rolVecAngle, sidVecAngle,lastErrors, derComps);
 
-  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG * 0.4285;
-  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG * 0.4285;
+  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG;
+  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG;
 
-  if (rolDeg > 10){
+  /*if (rolDeg > 10){
     rolDeg = 10;
   }else if (rolDeg < -10){
     rolDeg = -10;
@@ -230,7 +238,7 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
     sidDeg = 10;
   }else if (sidDeg < -10){
     sidDeg = -10;
-  }
+  }*/
   
   double rolVecServoUS = map(rolDeg, -90, 90, 900, 2100);
   double sidVecServoUS = map(sidDeg, -90, 90, 900, 2100);
