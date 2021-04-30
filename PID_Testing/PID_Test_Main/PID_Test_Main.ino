@@ -225,10 +225,10 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
   Integral(rolVecAngle, sidVecAngle, total, intComps);
   Derivative(rolVecAngle, sidVecAngle,lastErrors, derComps);
 
-  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG;
-  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG;
+  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG * (0.43);
+  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG * (0.43);
 
-  /*if (rolDeg > 10){
+  if (rolDeg > 10){
     rolDeg = 10;
   }else if (rolDeg < -10){
     rolDeg = -10;
@@ -238,7 +238,7 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
     sidDeg = 10;
   }else if (sidDeg < -10){
     sidDeg = -10;
-  }*/
+  }
   
   double rolVecServoUS = map(rolDeg, -90, 90, 900, 2100);
   double sidVecServoUS = map(sidDeg, -90, 90, 900, 2100);
