@@ -225,10 +225,10 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
   Integral(rolVecAngle, sidVecAngle, total, intComps);
   Derivative(rolVecAngle, sidVecAngle,lastErrors, derComps);
 
-  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG * (0.43);
-  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG * (0.43);
+  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG * 0.43;
+  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG * 0.43;
 
-  if (rolDeg > 10){
+  /*if (rolDeg > 10){
     rolDeg = 10;
   }else if (rolDeg < -10){
     rolDeg = -10;
@@ -238,10 +238,10 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
     sidDeg = 10;
   }else if (sidDeg < -10){
     sidDeg = -10;
-  }
+  }*/
   
-  double rolVecServoUS = map(rolDeg, -90, 90, 900, 2100);
-  double sidVecServoUS = map(sidDeg, -90, 90, 900, 2100);
+  double rolVecServoUS = map(rolDeg, -60, 60, 900, 2100);
+  double sidVecServoUS = map(sidDeg, -60, 60, 900, 2100);
 
   //Serial.printf("DerRol: %f, DerSid: %f, Order Rol: %f, Order Sid %f, rolUS: %f, sidUS: %f\n",derComps[0],derComps[1],rolDeg,sidDeg,rolVecServoUS,sidVecServoUS);
   //Serial.printf("IntRol: %f, IntSid: %f, Order Rol: %f, Order Sid %f, rolUS: %f, sidUS: %f\n",intComps[0],intComps[1],rolDeg,sidDeg,rolVecServoUS,sidVecServoUS);
@@ -273,8 +273,16 @@ void Integral(double angleRol, double angleSid, double total[], double intComps[
 
   int dt = millis()-PIDLastMill;
   //Serial.println((double)dt);
-  total[0] = total[0] + errorRol * dt;
-  total[1] = total[1] + errorSid * dt;
+  if (((total[0]+errorRol*dt) < 60) && ((total[0]+errorRol*dt) > -60)){
+    total[0] = total[0] + errorRol * dt;
+  } else {
+    total[0] = 60 * total[0]/abs(total[0]);
+  }
+  if (((total[1]+errorRol*dt) < 60) && ((total[1]+errorRol*dt) > -60)){
+    total[1] = total[1] + errorSid * dt;
+  } else {
+    total[1] = 60 * total[1]/abs(total[1]);
+  }
 
   intComps[0] = total[0] * iCoef * tConst;
   intComps[1] = total[1] * iCoef * tConst;
@@ -284,7 +292,7 @@ void Integral(double angleRol, double angleSid, double total[], double intComps[
 }
 
 void Derivative(double angleRol, double angleSid, double lastErrors[], double derComps[]){
-  double dCoef = 0.05;
+  double dCoef = 0.01;
   double tConst = 1000;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
