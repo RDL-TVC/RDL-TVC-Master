@@ -217,9 +217,10 @@ void loop(void)
   dt = PIDNextMill-PIDLastMill;
   PIDLastMill = PIDNextMill;
 
-  if (dt<10){
+  /*if (dt<10){
     delay(10-dt);
-  }
+  }*/
+  delay(10);
   
   PIDFunction(rollVec1, rollVec2, dir, usArray, DCM);
   
@@ -277,17 +278,19 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
 }
 
 void Proportional(double angleRol, double angleSid, double proComps[]){
-  double pCoef = 0.75;
+  double pCoef = 0.6;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
 
   proComps[0] = errorRol * pCoef;
   proComps[1] = errorSid * pCoef;
+
+  Serial.printf("Pitch: %f, Yaw: %f\n",proComps[0],proComps[1]);
   
 }
 
 void Integral(double angleRol, double angleSid, double total[], double intComps[]){
-  double iCoef = 0.005;
+  double iCoef = 0.000; //set to 0.005 earlier
   double tConst = 1;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
@@ -307,12 +310,12 @@ void Integral(double angleRol, double angleSid, double total[], double intComps[
   intComps[0] = total[0] * iCoef * tConst;
   intComps[1] = total[1] * iCoef * tConst;
 
-  //Serial.printf("Total Rol: %f, Total Sid: %f, dt: %i\n", total[0], total[1], dt);
+  Serial.printf("Total Rol: %f, Total Sid: %f, dt: %i\n", total[0], total[1], dt);
   
 }
 
 void Derivative(double angleRol, double angleSid, double lastErrors[], double derComps[]){
-  double dCoef = 0.05;
+  double dCoef = 0.1;
   double tConst = 1000;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
