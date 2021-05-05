@@ -28,13 +28,19 @@ double lastErrors[2] = {0,0};
 double proComps[2];
 double intComps[2];
 double derComps[2];
-int PIDLastMill;
 
-int armingButton = 6;
-int armingButton2 = 7;
+double PIDLastMill;
+double PIDNextMill;
+double dt;
+
+int armingButton = 5;
+int armingButton2 = 6;
 int buttonCycles = 0;
+int greenPin = 7;
+int redPin = 8;
 
-int piezoPin = 14;
+
+int piezoPin = 4;
 
 void setup(void)
 {
@@ -43,6 +49,9 @@ void setup(void)
   servo_pitch.writeMicroseconds(1500);
   servo_yaw.writeMicroseconds(1500);
 
+  pinMode(greenPin,OUTPUT);
+  pinMode(redPin,OUTPUT);
+  
   Serial.begin(9600);
 
   /*while(true){
@@ -90,12 +99,28 @@ void setup(void)
   }
 
   tone(piezoPin,4000,1000);
+  digitalWrite(greenPin,HIGH);
+
+  while(true){
+      if(digitalRead(armingButton) == HIGH && digitalRead(armingButton2) == HIGH) {
+        ++buttonCycles;
+        Serial.println(buttonCycles);
+        delay(10);
+        if (buttonCycles >= 500) {  //hold down both buttons for 5s
+          Serial.printf("Rocket armed: Startup-->Groundidle\n");
+          tone(piezoPin,4000,1000);
+          break;
+        }
+      }
+   }
+  
+  digitalWrite(greenPin,LOW);
 
   int upDirStartTime = millis();
   int upDirCurrTime = millis();
   int remainingTime;
   
-  while (upDirCurrTime-upDirStartTime <= 5000){
+  /*while (upDirCurrTime-upDirStartTime <= 5000){
 
     remainingTime = 5000-(upDirCurrTime-upDirStartTime);
     Serial.println("picking up direction in:");
@@ -103,8 +128,12 @@ void setup(void)
     upDirCurrTime = millis();
     delay(100);
     
-  }
+  }*/
+  
   tone(piezoPin,4000,1000);
+  digitalWrite(redPin,HIGH);
+  delay(2000);
+  
   Serial.println("Direction Chosen!");
 }
 
@@ -134,7 +163,8 @@ double newRollVec2z;
 
 void loop(void)
 {
-  /* Angle data */
+
+    /* Angle data */
   imu::Quaternion quat = bno.getQuat();
   imu::Quaternion qInv = getInverse(quat);
   //Serial.printf("q = [%5f %5f %5f %5f]         ", quat.w(),quat.x(),quat.y(),quat.z());
@@ -166,21 +196,8 @@ void loop(void)
 
   if (firstRun == 1){
     firstRun = firstRun - 1;
-
-    /*while(true){
-      if(digitalRead(armingButton) == HIGH && digitalRead(armingButton2) == HIGH) {
-        ++buttonCycles;
-        Serial.println(buttonCycles);
-        delay(10);
-        if (buttonCycles >= 500) {  //hold down both buttons for 5s
-          Serial.printf("Rocket armed: Startup-->Groundidle\n");
-          tone(piezoPin,4000,1000);
-          break;
-        }
-      }
-    }*/
     
-    DCM[0][0] = rollVec2.x();
+    /*DCM[0][0] = rollVec2.x();
     DCM[1][0] = rollVec2.y();
     DCM[2][0] = rollVec2.z();
     DCM[0][1] = rollVec1.x();
@@ -188,22 +205,29 @@ void loop(void)
     DCM[2][1] = rollVec1.z();
     DCM[0][2] = dir.x();
     DCM[1][2] = dir.y();
-    DCM[2][2] = dir.z();
+    DCM[2][2] = dir.z();*/
 
     /*imu::Quaternion newDir = dir;
     imu::Quaternion newRoll1 = rollVec1;
     imu::Quaternion newRoll2 = rollVec2;*/
-    
+    PIDLastMill = millis();
+  }
+
+  PIDNextMill = millis();
+  dt = PIDNextMill-PIDLastMill;
+  PIDLastMill = PIDNextMill;
+
+  if (dt<10){
+    delay(10-dt);
   }
   
-  PIDLastMill = millis();
   PIDFunction(rollVec1, rollVec2, dir, usArray, DCM);
   
   //Serial.printf("%f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec1.x(), rollVec1.y(), rollVec1.z());
 
-  double newDirX = DCM[0][0] * dir.x() + DCM[0][1] * dir.y() + DCM[0][2] * dir.z();
+  /*double newDirX = DCM[0][0] * dir.x() + DCM[0][1] * dir.y() + DCM[0][2] * dir.z();
   double newDirY = DCM[1][0] * dir.x() + DCM[1][1] * dir.y() + DCM[1][2] * dir.z();
-  double newDirZ = DCM[2][0] * dir.x() + DCM[2][1] * dir.y() + DCM[2][2] * dir.z();
+  double newDirZ = DCM[2][0] * dir.x() + DCM[2][1] * dir.y() + DCM[2][2] * dir.z();*/
   //Serial.printf("%f   %f   %f\n", newDirX, newDirY, newDirZ);
   
   //Serial.printf("%f   %f\n", usArray[0], usArray[1]);
@@ -213,20 +237,19 @@ void loop(void)
 
 void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quaternion dir, double usArray[], double DCM[][3]){
 
-  newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
-  newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();
-
-  double rolVecAngle = asin(newRollVec1z);
-  double sidVecAngle = asin(newRollVec2z);
+ /* newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
+  newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();*/
+  
+  double rolVecAngle = -asin(rollVec1.z());
+  double sidVecAngle = asin(rollVec2.z());
 
   //Serial.printf("%f   %f\n", rolVecServoAngle, sidVecServoAngle);
-  delay(10);
   Proportional(rolVecAngle, sidVecAngle, proComps);
   Integral(rolVecAngle, sidVecAngle, total, intComps);
   Derivative(rolVecAngle, sidVecAngle,lastErrors, derComps);
 
-  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG * 0.43;
-  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG * 0.43;
+  double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG * (0.5);
+  double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG * (0.5);
 
   /*if (rolDeg > 10){
     rolDeg = 10;
@@ -248,15 +271,13 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
 
   servo_pitch.writeMicroseconds(rolVecServoUS);
   servo_yaw.writeMicroseconds(sidVecServoUS);
-
-  PIDLastMill = millis();
   
   usArray[0] = rolVecServoUS;
   usArray[1] = sidVecServoUS;
 }
 
 void Proportional(double angleRol, double angleSid, double proComps[]){
-  double pCoef = 0.6;
+  double pCoef = 0.75;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
 
@@ -271,14 +292,13 @@ void Integral(double angleRol, double angleSid, double total[], double intComps[
   double errorRol = -angleRol;
   double errorSid = -angleSid;
 
-  int dt = millis()-PIDLastMill;
-  //Serial.println((double)dt);
-  if (((total[0]+errorRol*dt) < 60) && ((total[0]+errorRol*dt) > -60)){
+    //Serial.println((double)dt);
+  if (((total[0]+errorRol*dt) < 100) && ((total[0]+errorRol*dt) > -100)){
     total[0] = total[0] + errorRol * dt;
   } else {
     total[0] = 60 * total[0]/abs(total[0]);
   }
-  if (((total[1]+errorRol*dt) < 60) && ((total[1]+errorRol*dt) > -60)){
+  if (((total[1]+errorRol*dt) < 100) && ((total[1]+errorRol*dt) > -100)){
     total[1] = total[1] + errorSid * dt;
   } else {
     total[1] = 60 * total[1]/abs(total[1]);
@@ -287,24 +307,23 @@ void Integral(double angleRol, double angleSid, double total[], double intComps[
   intComps[0] = total[0] * iCoef * tConst;
   intComps[1] = total[1] * iCoef * tConst;
 
-  Serial.printf("Total Rol: %f, Total Sid: %f, dt: %i\n", total[0], total[1], dt);
+  //Serial.printf("Total Rol: %f, Total Sid: %f, dt: %i\n", total[0], total[1], dt);
   
 }
 
 void Derivative(double angleRol, double angleSid, double lastErrors[], double derComps[]){
-  double dCoef = 0.01;
+  double dCoef = 0.05;
   double tConst = 1000;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
 
-  int dt = millis()-PIDLastMill;
   double dErrRol = errorRol-lastErrors[0];
   double dErrSid = errorSid-lastErrors[1];
 
   derComps[0] = -(dErrRol/dt) * dCoef * tConst;
   derComps[1] = -(dErrSid/dt) * dCoef * tConst;
-
-  //Serial.printf("Time: %f, Change Rol: %f, Change Sid: %f, Order Rol: %f, Order Sid: %f\n",(double)dt,dErrRol,dErrSid,derComps[0],derComps[1]);
+  
+  Serial.printf("Time: %f, Change Rol: %f, Change Sid: %f, Order Rol: %f, Order Sid: %f\n",(double)dt,dErrRol,dErrSid,derComps[0],derComps[1]);
 
   lastErrors[0] = errorRol;
   lastErrors[1] = errorSid;
