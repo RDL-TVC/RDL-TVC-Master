@@ -186,6 +186,11 @@ void loop(void)
   angles[1] = asin(errorYaw) * 180/PI;
   Serial.printf("Pitch: %f   Yaw:%f\n",angles[0], angles[1]);
 
+  //using pythagorean theorem to ensure a max of 10deg
+  if (sin(adj[0])*sin(adj[0]) + sin(adj[1])*sin(adj[1]) <= sin(10*PI/180)*sin(10*PI/180)) {
+    adj[1] = asin(sqrt(sin(10*PI/180)*sin(10*PI/180) - sin(adj[0])*sin(adj[0]))); //biasing to pitch
+  }
+
   /* Convert gimbal angles to servo angles */ 
   angles[0] *= .4285;
   angles[1] *= .4285;
