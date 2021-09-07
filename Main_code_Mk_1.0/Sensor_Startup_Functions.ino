@@ -1,6 +1,6 @@
-/* Collection of all the startups in the Sensor_Test_Functions:
+/* 
+ * Collection of all the startups in the Sensor_Test_Functions:
  * returns 1 if runs/successful, 0 if sensor not found (currently excempting mosfets, buzzer, and servos)
- * TODO: Organize libraries and put sensor variables/names to proper places
  */
  
 //LEDs & buzzer
@@ -21,87 +21,70 @@ void indicatorSetup() {
     digitalWrite(LED2,LOW);
 
     //Piezo buzzer - plays for 2 seconds
-    int freq = 523; //Placeholder - High C 
-    tone(BUZZER, freq, 3000);
+
+    tone(BUZZER, 4000, 1000);
     delay(2000);
 }
 
 //SD card
 void SDSetup() {
-  //plays low tone to indicate function start
-  tone(BUZZER, 3000);
 
   Serial.print("Initializing SD card...");
                                                                                                                                               
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) {
     Serial.println("Card failed, or not present");
-    // don't do anything more
+    //don't do anything more
     
     //indicates SD failed, plays lower note
     noTone(BUZZER);
     delay(100);
-    tone(BUZZER, 2000, 3000);
-    delay(3000);   
-    while(1); //infinite loop prevents it from reaching other code - no else {} needed 
+    tone(BUZZER, 4000);
+    while (1); //infinite loop prevents it from reaching other code - no else {} needed 
   }
   
   Serial.println("card initialized.");
-  //indicates SD initialized
-  noTone(BUZZER);
-  delay(100);
-  tone(BUZZER, 3000, 1000);
-  delay(1000);
-  tone(BUZZER, 4000, 1000);
-  delay(1000);
 }
 
 //Ina260
 void inaSetup() {
-  //plays low tone to indicate function start
-  tone(BUZZER, 3000);
 
   //keeps running until ina found
   if (!ina260.begin()) {
     Serial.print("Couldn't find INA260 chip");
+    noTone(BUZZER);
+    delay(100);
+    tone(BUZZER,4000);
     while (1);
   }
-  Serial.print("Found INA260 chip");
+  Serial.print("Found INA260 chip\n");
 
-  //indicates INA found
-  noTone(BUZZER);
-  delay(100);
-  tone(BUZZER, 3000, 1000);
-  delay(1000);
-  tone(BUZZER, 4000, 1000);
-  delay(1000);
+  float total = 0;
+  for (int i = 0; i < 20; ++i) {
+    total += ina260.readBusVoltage();
+  }
+  avgVoltage = total/20;
+  Serial.printf("Average Voltage: %f\n", avgVoltage);
 }
 
 //Bno055
 int bnoSetup() {
   int isWorking = 0;
-  
-  //plays low tone to indicate function start
-  tone(BUZZER, 3000);
+  tone(BUZZER, 3000, 1000);
  
   /* Initialise the sensor */
   if(!bno.begin())
   {
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.println("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-    while(1);
+      noTone(BUZZER);
+      delay(100);
+      tone(BUZZER,4000);
+    while (1);
   } 
-
   delay(1000);
   bno.setExtCrystalUse(true);
 
-  //indicates bno was successfully found
-  noTone(BUZZER);
-  delay(100);
-  tone(BUZZER, 3000, 1000);
-  delay(1000);
-  tone(BUZZER, 3500);
-  
   uint8_t cal, gyro, accel, mag = 0;
   bno.getCalibration(&cal, &gyro, &accel, &mag);
 
@@ -133,7 +116,8 @@ int bnoSetup() {
   //indicates bno successfully calibrated
   noTone(BUZZER);
   delay(100);
-  tone(BUZZER, 3500, 1000);
+  
+  tone(BUZZER, 3000, 1000);
   delay(1000);
   tone(BUZZER, 4000, 1000);
   delay(1000);
@@ -145,12 +129,13 @@ int bnoSetup() {
 int bmpSetup(){
   int isWorking = 0;
   
-  //plays low tone to indicate function start
-  tone(BUZZER, 3000);
-  
   if (!bmp.begin_I2C()) {
     //error - could not find sensor
     Serial.println("Error: could not find bmp388 sensor");  
+    noTone(BUZZER);
+    delay(100);
+    tone(BUZZER,4000);
+    while (1);
   }
 
   // Set up oversampling and filder initialization - Placeholder values
@@ -160,15 +145,23 @@ int bmpSetup(){
   bmp.setOutputDataRate(BMP3_ODR_50_HZ);
 
   isWorking = 1;
-  
-  //indicates bmp was successfully found
-  noTone(BUZZER);
-  delay(100);
-  tone(BUZZER, 3000, 1000);
-  delay(1000);
-  tone(BUZZER, 4000,1000);
-  delay(1000);
-  
+
+  Serial.println("bmp found");
+
+  getAlt(alts);  //call once to get rid of garbage values
+  alts[1] = 0;
+  alts[2] = 0;
+  alts[3] = 0;
+    
+  //take an average of 20 altitude values to find the groundAltitude
+  float total = 0;
+  for (int i = 0; i < 20; ++i) {
+    getAlt(alts);
+    total += alts[1];
+  }
+  groundAltitude= total/20;
+  Serial.printf("Ground Altitude: %f\n",groundAltitude);
+
   return isWorking;
 }
 
@@ -227,21 +220,11 @@ void servoSetup() {
 
 //Mosfet charges
 void miscSetup() {
-  //plays low tone to indicate function start
-  tone(BUZZER, 3000);
-  
   pinMode(chuteCharge1,OUTPUT);
   pinMode(chuteCharge2,OUTPUT);
 
   pinMode(armingPin1, INPUT);
   pinMode(armingPin2,INPUT);
 
-  //indicates chute charges and arming buttons initialized
-  noTone(BUZZER);
-  delay(100);
-  tone(BUZZER, 3000, 1000);
-  delay(1000);
-  tone(BUZZER, 4000, 1000);
-  delay(1000);
 }
  

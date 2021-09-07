@@ -1,6 +1,6 @@
 /* TODO
  * Find place to record quaternion data
- * Take out angle conversion to degrees and fix mapping (in PID tab) to reflect that
+ * Insert way to report if the bno disconnects
  * Find alternate way to measure roll angle without the jump
  */
 void orientation(float orient[]) {
@@ -30,6 +30,8 @@ void orientation(float orient[]) {
     orient[1] = dir.x();
     orient[2] = dir.y();
     orient[3] = dir.z();
+
+    //Serial.printf("dirX = %.4f   dirY = %.4f   dirZ = %.4f\n", orient[1], orient[2], orient[3]);
       
     //Roll vector
     imu::Quaternion roll = quat * pt2 * qInv;
@@ -42,6 +44,8 @@ void orientation(float orient[]) {
   orient[7] = accel.x();
   orient[8] = accel.z();
   orient[9] = accel.y();
+
+  //Serial.printf("accX = %.2f   accY = %.2f   accZ = %.2f\n", orient[7], orient[8], orient[9]);
   
   /* Gyroscope data [rad/s]*/
   imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
@@ -75,6 +79,7 @@ imu::Quaternion getInverse(imu::Quaternion q) {
   return inv;
 }
 
+/*
 //Apply DCM to find relative axis
 float* findGimbalAngles(float* orientArr) {
   //[pitchAngle, yawAngle]
@@ -93,4 +98,32 @@ float* findGimbalAngles(float* orientArr) {
   angles[1] = asin(dir2[1])*180/PI; 
 
   return angles;
+}
+*/
+
+//alts[] = {isWorking, currentAlt, maxAlt, numberOfCycles}
+void getAlt(float* alts) {
+  if (! bmp.performReading()) {
+        //error - could not perform reading
+        Serial.println("Error: bmp388 could not perform reading");
+        alts[0] = 0;
+  }
+  
+  alts[0] = 1;
+  alts[1] = bmp.readAltitude(1013.25) - groundAltitude;
+
+  //if alt is less than max recorded alt for 5 cycles, then is decreasing
+  if (alts[1] >= alts[2]) {
+    alts[2] = alts[1];
+    alts[3] = 0;
+  } else {
+    ++alts[3];
+  }
+  /*
+  Serial.printf("Numberofcycles = %f      ", alts[3]);
+  Serial.printf("Max alt: %f    ", alts[2]);
+  Serial.printf("Current alt: %f       ", alts[1]);
+  Serial.printf("time taken for a cycle: %d\n", timer2*1);
+  */
+  timer2 = 0;
 }
