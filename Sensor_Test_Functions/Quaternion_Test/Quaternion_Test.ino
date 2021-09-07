@@ -144,7 +144,7 @@ void loop(void)
   pathDir[0] = DCM[0][0] * dir.x() + DCM[0][1] * dir.y() + DCM[0][2] * dir.z();
   pathDir[1] = DCM[1][0] * dir.x() + DCM[1][1] * dir.y() + DCM[1][2] * dir.z();
   pathDir[2] = DCM[2][0] * dir.x() + DCM[2][1] * dir.y() + DCM[2][2] * dir.z();
-  Serial.printf("%f   %f   %f   ", pathDir[0], pathDir[1], pathDir[2]);
+  //Serial.printf("Dir: %f   %f   %f   ", pathDir[0], pathDir[1], pathDir[2]);
 
   /* Constantly updating DCM according to the rocket's frame of reference */
   DCM2[0][0] = quat.w()*quat.w() + quat.x()*quat.x() - quat.y()*quat.y() - quat.z()*quat.z();
@@ -157,48 +157,50 @@ void loop(void)
   DCM2[2][1] = 2 * (quat.y()*quat.z() - quat.x()*quat.w());
   DCM2[2][2] = quat.w()*quat.w() - quat.x()*quat.x() - quat.y()*quat.y() + quat.z()*quat.z();
 
-  /* Find the error in pitch and yaw directions according to the inertial frame of reference */
-  double iErrorPitch[3]; 
-  iErrorPitch[0] = 0;
-  iErrorPitch[1] = pathDir[1];
-  iErrorPitch[2] = 0;
-  
-  double iErrorYaw[3]; 
-  iErrorYaw[0] = 0;
-  iErrorYaw[1] = 0;
-  iErrorYaw[2] = pathDir[2];
+  /* Find the error in y and z directions according to the inertial frame of reference */
+  double iError[4]; 
+  iError[0] = 0;
+  iError[1] = pathDir[1];
+  iError[2] = pathDir[2];
 
+  Serial.printf("error: %f   %f   ", iError[1], iError[2]);
   /* Apply the error to the constantly updating DCM to find the error components according to rocket FoR */
-  double fErrorPitch[3];
-  double fErrorYaw[3];
-  double mag;
+  double fError[4];
+ 
+  fError[0] = DCM2[0][0] * iError[0] + DCM2[0][1] * iError[1] + DCM2[0][2] * iError[2];
+  fError[1] = DCM2[1][0] * iError[0] + DCM2[1][1] * iError[1] + DCM2[1][2] * iError[2];
+  fError[2] = DCM2[2][0] * iError[0] + DCM2[2][1] * iError[1] + DCM2[2][2] * iError[2];
+  fError[3] = sqrt(fError[0]*fError[0] + fError[1]*fError[1] + fError[2]*fError[2]);
   
-  fErrorPitch[0] = DCM2[0][0] * iErrorPitch[0] + DCM2[0][1] * iErrorPitch[1] + DCM2[0][2] * iErrorPitch[2];
-  fErrorPitch[1] = DCM2[1][0] * iErrorPitch[0] + DCM2[1][1] * iErrorPitch[1] + DCM2[1][2] * iErrorPitch[2];
-  fErrorPitch[2] = DCM2[2][0] * iErrorPitch[0] + DCM2[2][1] * iErrorPitch[1] + DCM2[2][2] * iErrorPitch[2];
-  mag = sqrt(fErrorPitch[0]*fErrorPitch[0] + fErrorPitch[1]*fErrorPitch[1] + fErrorPitch[2]*fErrorPitch[2]);
-  fErrorPitch[0] /= mag;
-  fErrorPitch[1] /= mag;
-  fErrorPitch[2] /= mag;
-  Serial.printf("%f   %f   %f   ", fErrorPitch[0], fErrorPitch[1], fErrorPitch[2]);
-  
-  fErrorYaw[0] = DCM2[0][0] * iErrorYaw[0] + DCM2[0][1] * iErrorYaw[1] + DCM2[0][2] * iErrorYaw[2];
-  fErrorYaw[1] = DCM2[1][0] * iErrorYaw[0] + DCM2[1][1] * iErrorYaw[1] + DCM2[1][2] * iErrorYaw[2];
-  fErrorYaw[2] = DCM2[2][0] * iErrorYaw[0] + DCM2[2][1] * iErrorYaw[1] + DCM2[2][2] * iErrorYaw[2];
-  mag = sqrt(fErrorYaw[0]*fErrorYaw[0] + fErrorYaw[1]*fErrorYaw[1] + fErrorYaw[2]*fErrorYaw[2]);
-  fErrorYaw[0] /= mag;
-  fErrorYaw[1] /= mag;
-  fErrorYaw[2] /= mag;
-  Serial.printf("%f   %f   %f\n", fErrorYaw[0], fErrorYaw[1], fErrorYaw[2]);
-  
-  /* Find gimbal angles based on those new errors */
-  double angles[2];
-  angles[0] = 0;
-  angles[1] = 0;
+  Serial.printf("DCM error: %f   %f   %f   ", fError[0], fError[1], fError[2]);
 
-  /* Convert gimbal angles to servo angles */
-  angles[0] /= .4285;
-  angles[1] /= .4285;
+  /* Add these error components to find direction in pitch and yaw */
+  double errorPitch = fError[1];  
+  double errorYaw = fError[2];
+
+  Serial.printf("ePitch: %f   eYaw:%f   ", errorPitch, errorYaw);
+  
+  /* Find gimbal angles based on those new errors and convert to degrees*/
+  double angles[2];
+  angles[0] = asin(errorPitch) * 180/PI;
+  angles[1] = asin(errorYaw) * 180/PI;
+  Serial.printf("Pitch: %f   Yaw:%f\n",angles[0], angles[1]);
+
+  //using pythagorean theorem to ensure a max of 10deg
+  if (sin(adj[0])*sin(adj[0]) + sin(adj[1])*sin(adj[1]) <= sin(10*PI/180)*sin(10*PI/180)) {
+    adj[1] = asin(sqrt(sin(10*PI/180)*sin(10*PI/180) - sin(adj[0])*sin(adj[0]))); //biasing to pitch
+  }
+
+  /* Convert gimbal angles to servo angles */ 
+  angles[0] *= .4285;
+  angles[1] *= .4285;
+
+  /* Write angles to servos */
+  float pitchMicroSeconds = map(angles[0], -60, 60 ,900, 2100);
+  float yawMicroSeconds = map(angles[1], -60, 60 ,900, 2100);
+  
+  servo_pitch.write(pitchMicroSeconds);
+  servo_yaw.write(yawMicroSeconds);
 
   /*
   float angles[2];
