@@ -20,6 +20,8 @@ float orient[] = {0,0,0,0};
 float orient_cur[3] = {0,0,0};
 float orient_last[3] = {0,0,0};
 
+double pathDir[3];
+
 void setup(void) 
 {
   servo_pitch.attach(SERVO_PIN_PITCH);
@@ -87,6 +89,10 @@ imu::Quaternion getInverse(imu::Quaternion q) {
   return inv;
 }
 
+bool firstRun = true;
+double DCM[3][3];
+double DCM2[3][3];
+
 void loop(void) 
 {
   /* Angle data */
@@ -118,7 +124,85 @@ void loop(void)
   imu::Quaternion dir = quat * pt1 * qInv;
   imu::Quaternion rollVec1 = quat * pt2 * qInv;
   imu::Quaternion rollVec2 = quat * pt3 * qInv;
+
+  if (firstRun){
+    firstRun = false;
+    
+      DCM[0][0] = quat.w()*quat.w() + quat.x()*quat.x() - quat.y()*quat.y() - quat.z()*quat.z();
+      DCM[0][1] = 2 * (quat.x()*quat.y() + quat.z()*quat.w());
+      DCM[0][2] = 2 * (quat.x()*quat.z() - quat.y()*quat.w());
+      DCM[1][0] = 2 * (quat.x()*quat.y() - quat.z()*quat.w());
+      DCM[1][1] = quat.w()*quat.w() - quat.x()*quat.x() + quat.y()*quat.y() - quat.z()*quat.z();
+      DCM[1][2] = 2 * (quat.y()*quat.z() + quat.x()*quat.w());
+      DCM[2][0] = 2 * (quat.x()*quat.z() + quat.y()*quat.w());
+      DCM[2][1] = 2 * (quat.y()*quat.z() - quat.x()*quat.w());
+      DCM[2][2] = quat.w()*quat.w() - quat.x()*quat.x() - quat.y()*quat.y() + quat.z()*quat.z();
+    
+  }
+
+  /* direction according to set up direction */
+  pathDir[0] = DCM[0][0] * dir.x() + DCM[0][1] * dir.y() + DCM[0][2] * dir.z();
+  pathDir[1] = DCM[1][0] * dir.x() + DCM[1][1] * dir.y() + DCM[1][2] * dir.z();
+  pathDir[2] = DCM[2][0] * dir.x() + DCM[2][1] * dir.y() + DCM[2][2] * dir.z();
+  //Serial.printf("Dir: %f   %f   %f   ", pathDir[0], pathDir[1], pathDir[2]);
+
+  /* Constantly updating DCM according to the rocket's frame of reference */
+  DCM2[0][0] = quat.w()*quat.w() + quat.x()*quat.x() - quat.y()*quat.y() - quat.z()*quat.z();
+  DCM2[0][1] = 2 * (quat.x()*quat.y() + quat.z()*quat.w());
+  DCM2[0][2] = 2 * (quat.x()*quat.z() - quat.y()*quat.w());
+  DCM2[1][0] = 2 * (quat.x()*quat.y() - quat.z()*quat.w());
+  DCM2[1][1] = quat.w()*quat.w() - quat.x()*quat.x() + quat.y()*quat.y() - quat.z()*quat.z();
+  DCM2[1][2] = 2 * (quat.y()*quat.z() + quat.x()*quat.w());
+  DCM2[2][0] = 2 * (quat.x()*quat.z() + quat.y()*quat.w());
+  DCM2[2][1] = 2 * (quat.y()*quat.z() - quat.x()*quat.w());
+  DCM2[2][2] = quat.w()*quat.w() - quat.x()*quat.x() - quat.y()*quat.y() + quat.z()*quat.z();
+
+  /* Find the error in y and z directions according to the inertial frame of reference */
+  double iError[4]; 
+  iError[0] = 0;
+  iError[1] = pathDir[1];
+  iError[2] = pathDir[2];
+
+  Serial.printf("error: %f   %f   ", iError[1], iError[2]);
+  /* Apply the error to the constantly updating DCM to find the error components according to rocket FoR */
+  double fError[4];
+ 
+  fError[0] = DCM2[0][0] * iError[0] + DCM2[0][1] * iError[1] + DCM2[0][2] * iError[2];
+  fError[1] = DCM2[1][0] * iError[0] + DCM2[1][1] * iError[1] + DCM2[1][2] * iError[2];
+  fError[2] = DCM2[2][0] * iError[0] + DCM2[2][1] * iError[1] + DCM2[2][2] * iError[2];
+  fError[3] = sqrt(fError[0]*fError[0] + fError[1]*fError[1] + fError[2]*fError[2]);
   
+  Serial.printf("DCM error: %f   %f   %f   ", fError[0], fError[1], fError[2]);
+
+  /* Add these error components to find direction in pitch and yaw */
+  double errorPitch = fError[1];  
+  double errorYaw = fError[2];
+
+  Serial.printf("ePitch: %f   eYaw:%f   ", errorPitch, errorYaw);
+  
+  /* Find gimbal angles based on those new errors and convert to degrees*/
+  double angles[2];
+  angles[0] = asin(errorPitch) * 180/PI;
+  angles[1] = asin(errorYaw) * 180/PI;
+  Serial.printf("Pitch: %f   Yaw:%f\n",angles[0], angles[1]);
+
+  //using pythagorean theorem to ensure a max of 10deg
+  if (sin(adj[0])*sin(adj[0]) + sin(adj[1])*sin(adj[1]) <= sin(10*PI/180)*sin(10*PI/180)) {
+    adj[1] = asin(sqrt(sin(10*PI/180)*sin(10*PI/180) - sin(adj[0])*sin(adj[0]))); //biasing to pitch
+  }
+
+  /* Convert gimbal angles to servo angles */ 
+  angles[0] *= .4285;
+  angles[1] *= .4285;
+
+  /* Write angles to servos */
+  float pitchMicroSeconds = map(angles[0], -60, 60 ,900, 2100);
+  float yawMicroSeconds = map(angles[1], -60, 60 ,900, 2100);
+  
+  servo_pitch.write(pitchMicroSeconds);
+  servo_yaw.write(yawMicroSeconds);
+
+  /*
   float angles[2];
   Serial.printf("[%7.5f %7.5f %7.5f]      ", dir.x(), dir.y(), dir.z());
   angles[0] = asin(dir.x())*180/PI; //use 90 - acos(dot(dir, i)) and convert to degrees
@@ -143,6 +227,7 @@ void loop(void)
   
   servo_pitch.write(pitchMicroSeconds);
   servo_yaw.write(yawMicroSeconds);
+  */
 
   //float pitch = map(pitchMicroSeconds, 1000, 2000 , -45, 45);
   //float yaw = map(yawMicroSeconds, 1000, 2000, -45, 45);

@@ -1,4 +1,4 @@
-int piezoPin = 14;
+int piezoPin = 4;
 
 
 void setup() {
@@ -8,9 +8,9 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  tone(piezoPin,300,1000);
-  //delay(1000);
-  tone(piezoPin,500,1000);
-  //delay(1000);
+  tone(piezoPin,3000,1000);
+  delay(1000);
+  tone(piezoPin,5000,1000);
+  delay(1000);
  
 }

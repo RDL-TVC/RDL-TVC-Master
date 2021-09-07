@@ -47,7 +47,8 @@ File added by: Evan Grilley
 // Wiz820+SD board: pin 4
 // Teensy 2.0: pin 0
 // Teensy++ 2.0: pin 20
-const int chipSelect = BUILTIN_SDCARD;
+const int chipSelect = 11;
+//const int chipSelect = BUILTIN_SDCARD;
 int currentMillis;
 int oldMillis;
 
@@ -93,7 +94,7 @@ void loop()
   File dataFile = SD.open("datalog.txt", FILE_WRITE);
 
   // if the file is available, write to it:
-  if (dataFile) {
+  if (SD.exists("datalog.txt")) {
     dataFile.println(dataString);
     dataFile.close();
     // print to the serial port too:

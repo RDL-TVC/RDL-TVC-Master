@@ -21,6 +21,7 @@ void indicatorSetup() {
     digitalWrite(LED2,LOW);
 
     //Piezo buzzer - plays for 2 seconds
+
     tone(BUZZER, 4000, 1000);
     delay(2000);
 }
@@ -43,7 +44,6 @@ void SDSetup() {
   }
   
   Serial.println("card initialized.");
-
 }
 
 //Ina260
@@ -85,8 +85,6 @@ int bnoSetup() {
   delay(1000);
   bno.setExtCrystalUse(true);
 
-  //indicates bno was successfully found
-  
   uint8_t cal, gyro, accel, mag = 0;
   bno.getCalibration(&cal, &gyro, &accel, &mag);
 
@@ -118,6 +116,7 @@ int bnoSetup() {
   //indicates bno successfully calibrated
   noTone(BUZZER);
   delay(100);
+  
   tone(BUZZER, 3000, 1000);
   delay(1000);
   tone(BUZZER, 4000, 1000);
@@ -146,6 +145,7 @@ int bmpSetup(){
   bmp.setOutputDataRate(BMP3_ODR_50_HZ);
 
   isWorking = 1;
+
   Serial.println("bmp found");
 
   getAlt(alts);  //call once to get rid of garbage values
@@ -161,7 +161,7 @@ int bmpSetup(){
   }
   groundAltitude= total/20;
   Serial.printf("Ground Altitude: %f\n",groundAltitude);
-  
+
   return isWorking;
 }
 
@@ -220,11 +220,11 @@ void servoSetup() {
 
 //Mosfet charges
 void miscSetup() {
-
   pinMode(chuteCharge1,OUTPUT);
   pinMode(chuteCharge2,OUTPUT);
 
   pinMode(armingPin1, INPUT);
   pinMode(armingPin2,INPUT);
+
 }
  

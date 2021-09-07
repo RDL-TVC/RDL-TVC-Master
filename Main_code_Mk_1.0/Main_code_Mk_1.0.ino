@@ -60,6 +60,10 @@ void setup() {
   alts[0] = bmpSetup();
   servoSetup();
   miscSetup();
+
+  //TODO Mario powerup sound for "might work"!
+  tone(BUZZER, 4000, 1000); //Victory Screech
+
 }
 
 void loop() {
@@ -187,7 +191,9 @@ int groundidle() {
  *  May bypass the Burnout stage completely if the acceleration data forward fails
  */
 int boost() {
+
   int nextState = 2;
+  tone(BUZZER, 4000, 1000); //runs buzzer for 1s when liftoff is detected
 
   getAlt(alts);
   orientation(orient);

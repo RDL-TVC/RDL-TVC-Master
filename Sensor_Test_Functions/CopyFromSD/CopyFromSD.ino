@@ -3,13 +3,13 @@
 #include <SPI.h>
 
 const int SDchipSelect = BUILTIN_SDCARD;    // Audio Shield has SD card CS on pin 10
-const int FlashChipSelect = 48; // digital pin for flash chip CS pin
+const int FlashChipSelect = 10; // digital pin for flash chip CS pin
 //const int FlashChipSelect = 21; // Arduino 101 built-in SPI Flash
 
 void setup() {
   //uncomment these if using Teensy audio shield
-  //SPI.setSCK(14);  // Audio shield has SCK on pin 14
-  //SPI.setMOSI(7);  // Audio shield has MOSI on pin 7
+  //SPI.setSCK(24);  // Audio shield has SCK on pin 14
+  //SPI.setMOSI(12);  // Audio shield has MOSI on pin 7
 
   //uncomment these if you have other SPI chips connected
   //to keep them disabled while using only SerialFlash
