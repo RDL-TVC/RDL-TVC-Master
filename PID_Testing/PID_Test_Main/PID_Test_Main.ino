@@ -220,7 +220,7 @@ void loop(void)
   /*if (dt<10){
     delay(10-dt);
   }*/
-  delay(10);
+  delay(20);
   
   PIDFunction(rollVec1, rollVec2, dir, usArray, DCM);
   
@@ -278,7 +278,7 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
 }
 
 void Proportional(double angleRol, double angleSid, double proComps[]){
-  double pCoef = 0.6;
+  double pCoef = 0.6; // old value 0.6
   double errorRol = -angleRol;
   double errorSid = -angleSid;
 
@@ -315,7 +315,7 @@ void Integral(double angleRol, double angleSid, double total[], double intComps[
 }
 
 void Derivative(double angleRol, double angleSid, double lastErrors[], double derComps[]){
-  double dCoef = 0.1;
+  double dCoef = 0.15;
   double tConst = 1000;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
@@ -323,8 +323,8 @@ void Derivative(double angleRol, double angleSid, double lastErrors[], double de
   double dErrRol = errorRol-lastErrors[0];
   double dErrSid = errorSid-lastErrors[1];
 
-  derComps[0] = -(dErrRol/dt) * dCoef * tConst;
-  derComps[1] = -(dErrSid/dt) * dCoef * tConst;
+  derComps[0] = (dErrRol/dt) * dCoef * tConst;
+  derComps[1] = (dErrSid/dt) * dCoef * tConst;
   
   Serial.printf("Time: %f, Change Rol: %f, Change Sid: %f, Order Rol: %f, Order Sid: %f\n",(double)dt,dErrRol,dErrSid,derComps[0],derComps[1]);
 
