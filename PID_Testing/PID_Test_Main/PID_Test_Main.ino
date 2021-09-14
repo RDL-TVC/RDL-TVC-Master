@@ -156,7 +156,7 @@ imu::Quaternion getInverse(imu::Quaternion q) {
   return inv;
 }
 
-int firstRun = 1;
+int fifthRun = 5;
 double DCM[3][3];
 double newRollVec1z;
 double newRollVec2z;
@@ -194,18 +194,18 @@ void loop(void)
   imu::Quaternion rollVec1 = quat * pt2 * qInv;
   imu::Quaternion rollVec2 = quat * pt3 * qInv;
 
-  if (firstRun == 1){
-    firstRun = firstRun - 1;
+  if (fifthRun > 0){
+    fifthRun -= 1;
     
-    /*DCM[0][0] = rollVec2.x();
-    DCM[1][0] = rollVec2.y();
-    DCM[2][0] = rollVec2.z();
-    DCM[0][1] = rollVec1.x();
-    DCM[1][1] = rollVec1.y();
-    DCM[2][1] = rollVec1.z();
-    DCM[0][2] = dir.x();
-    DCM[1][2] = dir.y();
-    DCM[2][2] = dir.z();*/
+    DCM[0][0] = quat.w()*quat.w() + quat.x()*quat.x() - quat.y()*quat.y() - quat.z()*quat.z();
+    DCM[0][1] = 2 * (quat.x()*quat.y() + quat.z()*quat.w());
+    DCM[0][2] = 2 * (quat.x()*quat.z() - quat.y()*quat.w());
+    DCM[1][0] = 2 * (quat.x()*quat.y() - quat.z()*quat.w());
+    DCM[1][1] = quat.w()*quat.w() - quat.x()*quat.x() + quat.y()*quat.y() - quat.z()*quat.z();
+    DCM[1][2] = 2 * (quat.y()*quat.z() + quat.x()*quat.w());
+    DCM[2][0] = 2 * (quat.x()*quat.z() + quat.y()*quat.w());
+    DCM[2][1] = 2 * (quat.y()*quat.z() - quat.x()*quat.w());
+    DCM[2][2] = quat.w()*quat.w() - quat.x()*quat.x() - quat.y()*quat.y() + quat.z()*quat.z();
 
     /*imu::Quaternion newDir = dir;
     imu::Quaternion newRoll1 = rollVec1;
@@ -238,11 +238,11 @@ void loop(void)
 
 void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quaternion dir, double usArray[], double DCM[][3]){
 
- /* newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
-  newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();*/
+  newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
+  newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();
   
-  double rolVecAngle = -asin(rollVec1.z());
-  double sidVecAngle = asin(rollVec2.z());
+  double rolVecAngle = -asin(newrollVec1z);
+  double sidVecAngle = asin(newrollVec2z);
 
   //Serial.printf("%f   %f\n", rolVecServoAngle, sidVecServoAngle);
   Proportional(rolVecAngle, sidVecAngle, proComps);

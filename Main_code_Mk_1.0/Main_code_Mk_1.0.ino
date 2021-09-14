@@ -11,14 +11,14 @@
 #define SERVO_PIN_PITCH 0
 #define SERVO_PIN_YAW 1
 
-#define BUZZER 14
+#define BUZZER 4
 
-const int LED1 = 8;
-const int LED2 = 9;
-const int armingPin1 = 6;
-const int armingPin2 = 7;
-const int chuteCharge1 = 4; 
-const int chuteCharge2 = 5; 
+const int chuteCharge1 = 2; 
+const int chuteCharge2 = 3; 
+const int armingPin1 = 5;
+const int armingPin2 = 6;
+const int gLED = 7;
+const int rLED = 8;
 
 const float seaLevelPressure = 1013.25; //units of hPa, required for pressure altitude
 float groundAltitude = 0;
@@ -60,9 +60,6 @@ void setup() {
   alts[0] = bmpSetup();
   servoSetup();
   miscSetup();
-
-  //TODO Mario powerup sound for "might work"!
-  tone(BUZZER, 4000, 1000); //Victory Screech
 
 }
 
