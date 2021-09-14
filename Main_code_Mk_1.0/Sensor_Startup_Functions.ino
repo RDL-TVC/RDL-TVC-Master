@@ -21,7 +21,6 @@ void indicatorSetup() {
     digitalWrite(rLED,LOW);
 
     //Piezo buzzer - plays for 2 seconds
-
     tone(BUZZER, 4000, 1000);
     delay(2000);
 }
@@ -121,6 +120,8 @@ int bnoSetup() {
   delay(1000);
   tone(BUZZER, 4000, 1000);
   delay(1000);
+
+  digitalWrite(gLED,HIGH);
 
   return isWorking;
 }

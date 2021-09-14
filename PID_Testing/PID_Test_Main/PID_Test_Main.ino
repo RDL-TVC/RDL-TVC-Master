@@ -241,8 +241,8 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
   newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
   newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();
   
-  double rolVecAngle = -asin(newrollVec1z);
-  double sidVecAngle = asin(newrollVec2z);
+  double rolVecAngle = -asin(newRollVec1z);
+  double sidVecAngle = asin(newRollVec2z);
 
   //Serial.printf("%f   %f\n", rolVecServoAngle, sidVecServoAngle);
   Proportional(rolVecAngle, sidVecAngle, proComps);
