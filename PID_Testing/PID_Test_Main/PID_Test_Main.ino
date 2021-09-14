@@ -278,7 +278,7 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
 }
 
 void Proportional(double angleRol, double angleSid, double proComps[]){
-  double pCoef = 0.6; // old value 0.6
+  double pCoef = 0.7; // old value 0.6
   double errorRol = -angleRol;
   double errorSid = -angleSid;
 
@@ -315,7 +315,7 @@ void Integral(double angleRol, double angleSid, double total[], double intComps[
 }
 
 void Derivative(double angleRol, double angleSid, double lastErrors[], double derComps[]){
-  double dCoef = 0.15;
+  double dCoef = 0.17; //0.15
   double tConst = 1000;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
