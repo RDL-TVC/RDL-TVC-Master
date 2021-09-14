@@ -5,20 +5,20 @@
  
 //LEDs & buzzer
 void indicatorSetup() {
-  pinMode(LED1, OUTPUT); //LED1  pin 8
-  pinMode(LED2, OUTPUT); //LED2  pin 9
-  pinMode(BUZZER,OUTPUT); //piezo buzzer pin 14
+  pinMode(gLED, OUTPUT); //greenLED  pin 8
+  pinMode(rLED, OUTPUT); //red LED  pin 9
+  pinMode(BUZZER,OUTPUT); //piezo buzzer pin 4
 
   //external confirmation that they work
-    //LED1 - lights for 1 second
-    digitalWrite(LED1,HIGH);
+    //gLED - lights for 1 second
+    digitalWrite(gLED,HIGH);
     delay(1000);
-    digitalWrite(LED1,LOW);
+    digitalWrite(gLED,LOW);
 
-    //LED2 - lights for 1 seconds
-    digitalWrite(LED2,HIGH);
+    //rLED - lights for 1 seconds
+    digitalWrite(rLED,HIGH);
     delay(1000);
-    digitalWrite(LED2,LOW);
+    digitalWrite(rLED,LOW);
 
     //Piezo buzzer - plays for 2 seconds
 
