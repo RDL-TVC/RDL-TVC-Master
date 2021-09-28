@@ -36,7 +36,7 @@ int state = 0; // State of the state machine to know which flight function to ca
 int previousState = 0; //Place to store index of the previous flight function
 
 float alts[4];
-float orient[16];
+float orient[20];
 
 bool charge1 = true;
 bool charge2 = true;

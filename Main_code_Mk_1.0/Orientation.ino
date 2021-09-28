@@ -1,5 +1,5 @@
 /* TODO
- * Find place to record quaternion data
+ * Find place to record quaternion data -- appended to end of orient array
  * Insert way to report if the bno disconnects
  * Find alternate way to measure roll angle without the jump
  */
@@ -10,6 +10,12 @@ void orientation(float orient[]) {
   /* Direction and Roll vector data */
   imu::Quaternion quat = bno.getQuat();
   imu::Quaternion qInv = getInverse(quat);
+
+    //Quaternion data 
+    orient[16] = quat.w();
+    orient[17] = quat.x();
+    orient[18] = quat.y();
+    orient[19] = quat.z();
   
     //original Direction (i vector, towards nosecone)
     imu::Quaternion pt;
