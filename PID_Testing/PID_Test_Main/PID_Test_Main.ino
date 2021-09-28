@@ -244,6 +244,13 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
   double rolVecAngle = -asin(newRollVec1z);
   double sidVecAngle = asin(newRollVec2z);
 
+  double testValue1 = -1.0 * (double)rollVec1.x();
+  double testValue2 = -1.0 * (double)rollVec2.x();
+  double testValue3 = dir.x();
+
+  double theta1 = asin(testValue1);
+  double theta2 = atan2(testValue2,testValue3);  
+
   //Serial.printf("%f   %f\n", rolVecServoAngle, sidVecServoAngle);
   Proportional(rolVecAngle, sidVecAngle, proComps);
   Integral(rolVecAngle, sidVecAngle, total, intComps);
@@ -315,7 +322,7 @@ void Integral(double angleRol, double angleSid, double total[], double intComps[
 }
 
 void Derivative(double angleRol, double angleSid, double lastErrors[], double derComps[]){
-  double dCoef = 0.17; //0.15
+  double dCoef = 0; //0.15
   double tConst = 1000;
   double errorRol = -angleRol;
   double errorSid = -angleSid;
