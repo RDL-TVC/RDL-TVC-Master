@@ -52,14 +52,29 @@ void setup() {
   Serial.begin(115200);
   Serial.printf("Begin test:\n");
 
+  //Ensure indicators are off
+  digitalWrite(gLED,LOW);
+  digitalWrite(rLED,LOW);
+  noTone(BUZZER);
+
   // Initialize sensors and center equipment
   indicatorSetup();
+    //indicators validated to be working, battery plugged in
+    digitalWrite(rLED,HIGH); 
+    tone(BUZZER,3000,1000);
+    delay(1000);
+    tone(BUZZER,5000,1500);
   SDSetup();
   inaSetup();
   orient[0] = bnoSetup();
   alts[0] = bmpSetup();
   servoSetup();
   miscSetup();
+    //All sensors and components calibrated
+    digitalWrite(rLED,LOW);
+    digitalWrite(gLED,HIGH);
+    tone(BUZZER,4000,1000);
+    delay(1000);
 
 }
 
@@ -161,6 +176,12 @@ int startup() {
 int groundidle() {
   int nextState = 1;
   if (timer >= 1000) {
+    digitalWrite(gLED,HIGH);
+    digitalWrite(rLED,HIGH);
+    if (timer >= 500){
+      digitalWrite(gLED,LOW);
+      digitalWrite(rLED,LOW);
+    }
     timer = 0;
     tone(BUZZER, 4000, 500);
   }
@@ -172,7 +193,9 @@ int groundidle() {
   if (orient[7] >= 12) { 
     nextState = 2;
     previousState = 1;
-    tone(BUZZER, 4000, 1000); //Victory Screech: runs buzzer for 1s when liftoff is detected
+    digitalWrite(gLED,LOW);
+    digitalWrite(rLED,LOW);
+    tone(BUZZER, 6000, 1000); //Victory Screech: runs buzzer for 1s when liftoff is detected; MAX f needed
     Serial.printf("Liftoff detected: Groundidle-->Boost\n");
   }
   return nextState;

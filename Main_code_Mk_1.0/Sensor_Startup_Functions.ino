@@ -69,7 +69,8 @@ void inaSetup() {
 //Bno055
 int bnoSetup() {
   int isWorking = 0;
-  tone(BUZZER, 3000, 1000);
+  delay(1000);    //delay of at least a second to separate from indicatorSetup()
+  tone(BUZZER, 4000, 500);
  
   /* Initialise the sensor */
   if(!bno.begin())
