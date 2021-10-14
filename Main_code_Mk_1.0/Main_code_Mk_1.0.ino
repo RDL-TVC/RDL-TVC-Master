@@ -1,34 +1,38 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
-#include "Adafruit_BMP3XX.h"
+#include <Adafruit_BMP3XX.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 #include <Adafruit_INA260.h>
 #include <Servo.h>
 #include <SD.h>
 
-#define SERVO_PIN_PITCH 0
-#define SERVO_PIN_YAW 1
+const int SERVO_PIN_PITCH = 0;
+const int SERVO_PIN_YAW = 1;
 
-#define BUZZER 4
+const int BUZZER = 4;
 
-const int chuteCharge1 = 2; 
-const int chuteCharge2 = 3; 
-const int armingPin1 = 5;
-const int armingPin2 = 6;
-const int gLED = 7;
-const int rLED = 8;
+const int CHUTE_1_PIN = 2;
+const int CHUTE_2_PIN = 3;
 
-const float seaLevelPressure = 1013.25; //units of hPa, required for pressure altitude
+const int ARM_B1_PIN = 5;
+const int ARM_B2_PIN = 6;
+
+const int LED_GREEN = 7;
+const int LED_RED = 8;
+
+const float SL_PRESSURE = 1013.25; //units of hPa, required for pressure altitude
+
+const int SD_CARD = BUILTIN_SDCARD;
+
 float groundAltitude = 0;
 float avgVoltage = 0;
-
-const int chipSelect = BUILTIN_SDCARD;
 
 Adafruit_BMP3XX bmp;
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 Adafruit_INA260 ina260 = Adafruit_INA260();
+
 Servo servoPitch;
 Servo servoYaw;
 
@@ -44,6 +48,7 @@ bool timer2Start = true;
 
 elapsedMillis timer = 0;
 elapsedMillis timer2 = 0;
+
 int errorCycle = 0;
 int buttonCycles = 0;
 
@@ -53,14 +58,14 @@ void setup() {
   Serial.printf("Begin test:\n");
 
   //Ensure indicators are off
-  digitalWrite(gLED,LOW);
-  digitalWrite(rLED,LOW);
+  digitalWrite(LED_GREEN,LOW);
+  digitalWrite(LED_RED,LOW);
   noTone(BUZZER);
 
   // Initialize sensors and center equipment
   indicatorSetup();
     //indicators validated to be working, battery plugged in
-    digitalWrite(rLED,HIGH); 
+    digitalWrite(LED_RED,HIGH); 
     tone(BUZZER,3000,1000);
     delay(1000);
     tone(BUZZER,5000,1500);
@@ -71,8 +76,8 @@ void setup() {
   servoSetup();
   miscSetup();
     //All sensors and components calibrated
-    digitalWrite(rLED,LOW);
-    digitalWrite(gLED,HIGH);
+    digitalWrite(LED_RED,LOW);
+    digitalWrite(LED_GREEN,HIGH);
     tone(BUZZER,4000,1000);
     delay(1000);
 
@@ -141,11 +146,11 @@ void loop() {
  */
 int startup() {
   int nextState = 0;
-  Serial.print(digitalRead(armingPin1));
+  Serial.print(digitalRead(ARM_B1_PIN));
   Serial.print("   ");
-  Serial.print(digitalRead(armingPin2));
+  Serial.print(digitalRead(ARM_B2_PIN));
 
-  if(digitalRead(armingPin1) == HIGH && digitalRead(armingPin2) == HIGH) {
+  if(digitalRead(ARM_B1_PIN) == HIGH && digitalRead(ARM_B2_PIN) == HIGH) {
     ++buttonCycles;
     delay(10);
     if (buttonCycles >= 500) {  //hold down both buttons for 5s
@@ -176,11 +181,11 @@ int startup() {
 int groundidle() {
   int nextState = 1;
   if (timer >= 1000) {
-    digitalWrite(gLED,HIGH);
-    digitalWrite(rLED,HIGH);
+    digitalWrite(LED_GREEN,HIGH);
+    digitalWrite(LED_RED,HIGH);
     if (timer >= 500){
-      digitalWrite(gLED,LOW);
-      digitalWrite(rLED,LOW);
+      digitalWrite(LED_GREEN,LOW);
+      digitalWrite(LED_RED,LOW);
     }
     timer = 0;
     tone(BUZZER, 4000, 500);
@@ -193,8 +198,8 @@ int groundidle() {
   if (orient[7] >= 12) { 
     nextState = 2;
     previousState = 1;
-    digitalWrite(gLED,LOW);
-    digitalWrite(rLED,LOW);
+    digitalWrite(LED_GREEN,LOW);
+    digitalWrite(LED_RED,LOW);
     tone(BUZZER, 6000, 1000); //Victory Screech: runs buzzer for 1s when liftoff is detected; MAX f needed
     Serial.printf("Liftoff detected: Groundidle-->Boost\n");
   }
@@ -307,17 +312,17 @@ int chute(){
   if (accelMag < 2 && (alts[0] != 1 || alts[1] >= 20) && (previousState >= 2 && previousState != 6)) { 
     //If less than 1 second has passed and the first charge has not deployed, send a charge through the MOSFET1
     if (timer <= 1000 && charge1) {
-      digitalWrite(chuteCharge1, HIGH);
+      digitalWrite(CHUTE_1_PIN, HIGH);
       charge1 = false;
       Serial.println("Chute charge 1 active");
     } else if (timer >= 2000 && timer < 4000 && charge2) {  //If 1 second has passed and the second charge has not deployed, send a charge through the MOSFET2
-      digitalWrite(chuteCharge1, LOW);
+      digitalWrite(CHUTE_1_PIN, LOW);
       Serial.println("Chute charge 1 deactivated");
-      digitalWrite(chuteCharge2, HIGH);
+      digitalWrite(CHUTE_2_PIN, HIGH);
       Serial.println("Chute charge 2 active");
       charge2 = false;
     } else if (!charge1 && !charge2){  //if both charges have been deployed and acceleration still reads freefall (still going through first if-statement), start a second timer
-      digitalWrite(chuteCharge2, LOW);
+      digitalWrite(CHUTE_2_PIN, LOW);
       Serial.println("Chute charge 2 deactivated");
       if (timer2Start) {  //so that timer2 only resets once
         timer2 = 0;
