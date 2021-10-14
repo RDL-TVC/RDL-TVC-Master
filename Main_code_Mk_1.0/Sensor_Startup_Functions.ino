@@ -5,20 +5,20 @@
  
 //LEDs & buzzer
 void indicatorSetup() {
-  pinMode(gLED, OUTPUT); //greenLED  pin 8
-  pinMode(rLED, OUTPUT); //red LED  pin 9
+  pinMode(LED_GREEN, OUTPUT); //greenLED  pin 8
+  pinMode(LED_RED, OUTPUT); //red LED  pin 9
   pinMode(BUZZER,OUTPUT); //piezo buzzer pin 4
 
   //external confirmation that they work
-    //gLED - lights for 1 second
-    digitalWrite(gLED,HIGH);
+    //LED_GREEN - lights for 1 second
+    digitalWrite(LED_GREEN,HIGH);
     delay(1000);
-    digitalWrite(gLED,LOW);
+    digitalWrite(LED_GREEN,LOW);
 
-    //rLED - lights for 1 seconds
-    digitalWrite(rLED,HIGH);
+    //LED_RED - lights for 1 seconds
+    digitalWrite(LED_RED,HIGH);
     delay(1000);
-    digitalWrite(rLED,LOW);
+    digitalWrite(LED_RED,LOW);
 
     //Piezo buzzer - plays for 2 seconds
     tone(BUZZER, 4000, 1000);
@@ -31,7 +31,7 @@ void SDSetup() {
   Serial.print("Initializing SD card...");
                                                                                                                                               
   // see if the card is present and can be initialized:
-  if (!SD.begin(chipSelect)) {
+  if (!SD.begin(SD_CARD)) {
     Serial.println("Card failed, or not present");
     //don't do anything more
     
@@ -122,7 +122,7 @@ int bnoSetup() {
   tone(BUZZER, 4000, 1000);
   delay(1000);
 
-  digitalWrite(gLED,HIGH);
+  digitalWrite(LED_GREEN,HIGH);
 
   return isWorking;
 }
@@ -222,11 +222,11 @@ void servoSetup() {
 
 //Mosfet charges
 void miscSetup() {
-  pinMode(chuteCharge1,OUTPUT);
-  pinMode(chuteCharge2,OUTPUT);
+  pinMode(CHUTE_1_PIN,OUTPUT);
+  pinMode(CHUTE_2_PIN,OUTPUT);
 
-  pinMode(armingPin1, INPUT);
-  pinMode(armingPin2,INPUT);
+  pinMode(ARM_B1_PIN, INPUT);
+  pinMode(ARM_B2_PIN,INPUT);
 
 }
  
