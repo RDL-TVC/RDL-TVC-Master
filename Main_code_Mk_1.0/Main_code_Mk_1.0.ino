@@ -8,10 +8,15 @@
 #include <Servo.h>
 #include <SD.h>
 
+// Pins for external componets and associated counters
 const int SERVO_PIN_PITCH = 0;
 const int SERVO_PIN_YAW = 1;
 
 const int BUZZER = 4;
+
+const int TONE_SUCCESS = 523; // In Hz Currently C5
+const int TONE_FAILURE = 261; // In Hz currently C4
+const int TONE_VICTORY = 1046; // In Hz Currently C6
 
 const int CHUTE_1_PIN = 2;
 const int CHUTE_2_PIN = 3;
@@ -19,15 +24,20 @@ const int CHUTE_2_PIN = 3;
 const int ARM_B1_PIN = 5;
 const int ARM_B2_PIN = 6;
 
+const int SECONDS_TO_ARM = 10; // Amount of seconds need to hold down both buttons to arm
+
 const int LED_GREEN = 7;
 const int LED_RED = 8;
 
+const int DUTY_CYCLE = 1000; // Length of LED blinking Duty cycle in millis
+const float LED_TIME_ON = .05; // fraction of duty cycle that LED is on
+
 const float SL_PRESSURE = 1013.25; //units of hPa, required for pressure altitude
 
-const int SD_CARD = BUILTIN_SDCARD;
+const int MAX_ERROR_CYCLES = 10; // Maximum number of error cycles in a row that are tolerated before proceding to failure.
 
-float groundAltitude = 0;
-float avgVoltage = 0;
+// Objects used
+const int SD_CARD = BUILTIN_SDCARD;
 
 Adafruit_BMP3XX bmp;
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
@@ -35,6 +45,10 @@ Adafruit_INA260 ina260 = Adafruit_INA260();
 
 Servo servoPitch;
 Servo servoYaw;
+
+// Global Variables that carry from cycle to cycle
+float groundAltitude = 0;
+float avgVoltage = 0;
 
 int state = 0; // State of the state machine to know which flight function to call. Starts at startup.
 int previousState = 0; //Place to store index of the previous flight function
@@ -46,44 +60,73 @@ bool charge1 = true;
 bool charge2 = true;
 bool timer2Start = true;
 
-elapsedMillis timer = 0;
-elapsedMillis timer2 = 0;
-
+// Cycle counters
 int errorCycle = 0;
 int buttonCycles = 0;
 
+// Various timers
+elapsedMillis PROGRAM_TIME = 0; // Time since start of program do not reset
+elapsedMillis armTimer = 0; // Elapsed time while arming buttons are held.
+
+elapsedMillis timer = 0;
+elapsedMillis timer2 = 0;
+
+
 /* Initializes all the sensors, the required variables, and calibrates data */
 void setup() {
+  PROGRAM_TIME = 0;
+  
   Serial.begin(115200);
-  Serial.printf("Begin test:\n");
+  Serial.println("Begin Initialization:");
 
-  //Ensure indicators are off
-  digitalWrite(LED_GREEN,LOW);
-  digitalWrite(LED_RED,LOW);
-  noTone(BUZZER);
+  bool i = true;
+  
+  // Initialize Indicators (LEDs, Buzzer)
+  i = i & indicatorInit();
 
-  // Initialize sensors and center equipment
-  indicatorSetup();
-    //indicators validated to be working, battery plugged in
-    digitalWrite(LED_RED,HIGH); 
-    tone(BUZZER,3000,1000);
-    delay(1000);
-    tone(BUZZER,5000,1500);
-  SDSetup();
-  inaSetup();
-  orient[0] = bnoSetup();
-  alts[0] = bmpSetup();
-  servoSetup();
-  miscSetup();
-    //All sensors and components calibrated
-    digitalWrite(LED_RED,LOW);
-    digitalWrite(LED_GREEN,HIGH);
-    tone(BUZZER,4000,1000);
-    delay(1000);
+  digitalWrite(LED_GREEN,HIGH);
+  // Intilize storage
+  i = i & SDInit();
+  
+  // Initialize Sensors
+  i = i & inaInit();
+  orient[0] = bnoInit();
+  i = i & int(orient[0]);
+  alts[0] = bmpInit();
+  i = i & int(alts[0]);
 
+  // Intialize and Test Servos
+  i = i & servoInit();
+  i = i & servoTest();
+
+  // Initilize Charge pins and Arming buttons
+  i = i & chuteInit();
+  i = i & armingInit();
+
+  if (!i)
+  { 
+    // prevent program from continuing if any component failed to initialize
+    Serial.println("Initialization failed");
+    tone(BUZZER,4000);
+    digitalWrite(LED_RED, HIGH);
+    while(1){}
+  }
+
+  // Sensors Initialized. Celebrate!
+  digitalWrite(LED_GREEN, HIGH);
+  tone(BUZZER, TONE_SUCCESS, 500);
+  delay(500);
+  tone(BUZZER, TONE_VICTORY, 250);
+  delay(250);
+  
+  // Proceed to startup to wait for arming
+  armTimer = 0;
+  
 }
 
 void loop() {
+  
+  
   /* check first for sensor errors
    * BMP388 stops working
    * BNO055 stops working
@@ -91,8 +134,8 @@ void loop() {
   if (alts[0] == 0 || orient[0] == 0 || ina260.readBusVoltage() <= (avgVoltage - 6000) ) { 
       ++errorCycle;
       //if the problem continues for 10 cycles in a row, proceed to correction
-      if (errorCycle >= 10) {
-        tone(BUZZER, 3900);
+      if (errorCycle >= MAX_ERROR_CYCLES) {
+        tone(BUZZER, TONE_FAILURE);
         
         //lock gimbal
         servoPitch.write(90);
@@ -135,7 +178,8 @@ void loop() {
       break;
     default : 
       state = failure(); // failure state - for unknown errors that can't go directly to chute or landed state
-  }   
+  }
+  delay(10);
 }
 
 /* 
@@ -146,29 +190,26 @@ void loop() {
  */
 int startup() {
   int nextState = 0;
-  Serial.print(digitalRead(ARM_B1_PIN));
-  Serial.print("   ");
-  Serial.print(digitalRead(ARM_B2_PIN));
 
   if(digitalRead(ARM_B1_PIN) == HIGH && digitalRead(ARM_B2_PIN) == HIGH) {
-    ++buttonCycles;
-    delay(10);
-    if (buttonCycles >= 500) {  //hold down both buttons for 5s
-      nextState = 1;
-      previousState = 0;
+    Serial.print("Arming, Seconds till armed: ");
+    Serial.println(SECONDS_TO_ARM - (armTimer / 1000));
+    if (armTimer > (SECONDS_TO_ARM * 1000)) {  //hold down both buttons for specified time
       Serial.printf("Rocket armed: Startup-->Groundidle\n");
-  
-      //calls once to see if bmp is still working, sets all values to 0
-      getAlt(alts);
-      alts[1] = 0;
-      alts[2] = 0;
-      alts[3] = 0;
+      tone(BUZZER,TONE_SUCCESS,1000);
+      delay(1000);
+      previousState = 0;
+      nextState = 1;
     }
   } else {
-    buttonCycles = 0;
+    armTimer = 0;
+    Serial.print("Idle");
   }
-  Serial.print("   ");
-  Serial.println(buttonCycles);
+  
+  LEDBlink(LED_GREEN, DUTY_CYCLE / 2, LED_TIME_ON);
+
+  // Implement check to see if sensors are still runing
+  
   return nextState;
 }
 
@@ -180,16 +221,11 @@ int startup() {
  */
 int groundidle() {
   int nextState = 1;
-  if (timer >= 1000) {
-    digitalWrite(LED_GREEN,HIGH);
-    digitalWrite(LED_RED,HIGH);
-    if (timer >= 500){
-      digitalWrite(LED_GREEN,LOW);
-      digitalWrite(LED_RED,LOW);
-    }
-    timer = 0;
-    tone(BUZZER, 4000, 500);
-  }
+
+  LEDBlink(LED_GREEN, DUTY_CYCLE, LED_TIME_ON);
+  LEDBlink(LED_RED, DUTY_CYCLE, LED_TIME_ON);
+
+  // Add buzzer beep
 
   getAlt(alts);
   orientation(orient);
@@ -200,7 +236,7 @@ int groundidle() {
     previousState = 1;
     digitalWrite(LED_GREEN,LOW);
     digitalWrite(LED_RED,LOW);
-    tone(BUZZER, 6000, 1000); //Victory Screech: runs buzzer for 1s when liftoff is detected; MAX f needed
+    tone(BUZZER, TONE_VICTORY, 1000); //Victory Screech: runs buzzer for 1s when liftoff is detected; MAX f needed
     Serial.printf("Liftoff detected: Groundidle-->Boost\n");
   }
   return nextState;
@@ -218,7 +254,6 @@ int groundidle() {
 int boost() {
 
   int nextState = 2;
-  tone(BUZZER, 4000, 1000); //runs buzzer for 1s when liftoff is detected
 
   getAlt(alts);
   orientation(orient);
