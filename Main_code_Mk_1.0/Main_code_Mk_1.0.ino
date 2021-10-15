@@ -81,8 +81,11 @@ elapsedMillis armTimer = 0; // Elapsed time while arming buttons are held.
 elapsedMillis chuteChargeTimer = 0; // Time since last chute charge was activated
 elapsedMillis freefallTimer = 0; // time since free fall started
 
-
-/* Initializes all the sensors, the required variables, and calibrates data */
+/********************************************************************************
+ *  Setup : void setup()
+ *  Runs once all one time functions to set up program for the statemachine.
+ *  Initializes all components.
+ ********************************************************************************/
 void setup() 
 {
   PROGRAM_TIME = 0;
@@ -135,6 +138,10 @@ void setup()
   
 }
 
+/********************************************************************************
+ *  Loop(main) : void loop()
+ *  Loops through statemachine states and checks for errors.
+ ********************************************************************************/
 void loop() 
 { 
   
