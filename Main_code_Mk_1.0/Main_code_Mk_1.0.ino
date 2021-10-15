@@ -59,9 +59,6 @@ float avgVoltage = 0;
 int state = 0; // State of the state machine to know which flight function to call. Starts at startup.
 int previousState = 0; //Place to store index of the previous flight function
 
-float alts[4];
-float orient[20];
-
 int BNO055Status = 0;
 double quaternion[4]; // current Raw Quaternion Vector from BNO055
 double accelVector[3]; // current Acceleration Vector
@@ -105,10 +102,10 @@ void setup() {
   
   // Initialize Sensors
   i = i & inaInit();
-  orient[0] = bnoInit();
-  i = i & int(orient[0]);
-  alts[0] = bmpInit();
-  i = i & int(alts[0]);
+  BNO055Status = bnoInit();
+  i = i & BNO055Status;
+  BMP388Status = bmpInit();
+  i = i & int(BMP388Status);
 
   // Intialize and Test Servos
   i = i & servoInit();
@@ -329,7 +326,7 @@ int freefall(){
   BMP388Status = getAlt(&alt, &apogee);
   BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
 
-  if (alts[1] <= CHUTE_DEPLOY_ALT){ 
+  if (alt <= CHUTE_DEPLOY_ALT){ 
     nextState = 5;
     previousState = 4;
     Serial.printf("Chute Deployment Altitude detected: Freefall-->Chute\n");
