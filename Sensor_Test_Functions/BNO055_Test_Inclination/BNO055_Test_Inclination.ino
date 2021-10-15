@@ -46,7 +46,6 @@ void setup() {
   Serial.print(accel);
   Serial.print(", Mag = ");
   Serial.println(mag);
-  tone(buzzerPin,1000,1000);
 
   while(cal != 3)
   {

@@ -57,7 +57,6 @@ float groundAltitude = 0;
 float avgVoltage = 0;
 
 int state = 0; // State of the state machine to know which flight function to call. Starts at startup.
-int previousState = 0; //Place to store index of the previous flight function
 
 int BNO055Status = 0;
 double quaternion[4]; // current Raw Quaternion Vector from BNO055
@@ -69,9 +68,8 @@ int BMP388Status = 0;
 double alt = 0; // current altitude in m
 double apogee = 0; // maximum altitued reached in m
 
-bool charge1 = true;
-bool charge2 = true;
-bool timer2Start = true;
+bool charge1 = true; // Is chute charge 1 availible?
+bool charge2 = true; // Is chute charge 2 availible?
 
 // Cycle counters
 int errorCycle = 0;
@@ -80,12 +78,13 @@ int errorCycle = 0;
 elapsedMillis PROGRAM_TIME = 0; // Time since start of program do not reset
 elapsedMillis armTimer = 0; // Elapsed time while arming buttons are held.
 
-elapsedMillis chuteChargeTimer = 0;
-elapsedMillis freefallTimer = 0;
+elapsedMillis chuteChargeTimer = 0; // Time since last chute charge was activated
+elapsedMillis freefallTimer = 0; // time since free fall started
 
 
 /* Initializes all the sensors, the required variables, and calibrates data */
-void setup() {
+void setup() 
+{
   PROGRAM_TIME = 0;
   
   Serial.begin(115200);
@@ -97,6 +96,7 @@ void setup() {
   i = i & indicatorInit();
 
   digitalWrite(LED_GREEN,HIGH);
+  
   // Intilize storage
   i = i & SDInit();
   
@@ -116,8 +116,7 @@ void setup() {
   i = i & armingInit();
 
   if (!i)
-  { 
-    // prevent program from continuing if any component failed to initialize
+  { // prevent program from continuing if any component failed to initialize
     Serial.println("Initialization failed");
     tone(BUZZER,TONE_FAILURE);
     digitalWrite(LED_RED, HIGH);
@@ -136,34 +135,32 @@ void setup() {
   
 }
 
-void loop() {
+void loop() 
+{ 
   
-  
-  /* check first for sensor errors
-   * BMP388 stops working
-   * BNO055 stops working
-   * INA260 reads an average voltage drop of 6V */
-  if (BMP388Status == 0 || BNO055Status == 0 || ina260.readBusVoltage() <= (avgVoltage - 6000) ) { 
+  if (BMP388Status == 0 || BNO055Status == 0 || ina260.readBusVoltage() <= (avgVoltage - 6000) ) 
+  { // Check know statuses of sensors to check for sensor or battery failure
       ++errorCycle;
-      //if the problem continues for 10 cycles in a row, proceed to correction
-      if (errorCycle >= MAX_ERROR_CYCLES) {
+      if (errorCycle >= MAX_ERROR_CYCLES) 
+      { //if the problem continues for specified number of cycles in a row, proceed to correction
         tone(BUZZER, TONE_FAILURE);
         
         //TODO: lock gimbal
   
         //TODO: save to SD card
-  
-        //send to  failure state ???
-        previousState = state;
+
+        // Rocket no longer controlable, deploy chute to minimize damage
         state = chute();
       }
-  } else { 
+  } else 
+  { 
     errorCycle = 0; 
   }
   
-  /* Intakes the current state of the state machine and runs the appropriate function for that state.
-  Returns the next state of the state machine */
-  switch(state) {
+  // Intakes the current state of the state machine and runs the appropriate function for that state.
+  // State function returns next state to run (itself or next state)
+  switch(state) 
+  {
     case 0 :
       state = startup();
       break;
@@ -186,63 +183,74 @@ void loop() {
       state = landing();
       break;
     default : 
-      state = failure(); // failure state - for unknown errors that can't go directly to chute or landed state
+      state = failure();
   }
   delay(10);
 }
 
-/* 
- *  int startup(): 
- *  Beginning state - may be placed in setup()
- *  Waits for button push to arm the rocket and to reset altitude measurements 
- *  returns the nextState of groundidle() if successful 
- */
-int startup() {
+/********************************************************************************
+ *  Startup State Function     : int startup() 
+ *      returns                : nextState, Next state function to run
+ *  
+ *  Rocket starting state - may be placed in setup().
+ *  Waits for button push to arm the rocket.
+ *  returns the nextState of groundidle() if armed. 
+ ********************************************************************************/
+int startup() 
+{
   int nextState = 0;
-
-  if(digitalRead(ARM_B1_PIN) == HIGH && digitalRead(ARM_B2_PIN) == HIGH) {
+  
+  if(digitalRead(ARM_B1_PIN) == HIGH && digitalRead(ARM_B2_PIN) == HIGH) 
+  { // If both arming buttons are pressed, start counting down.
     Serial.print("Arming, Seconds till armed: ");
     Serial.println(SECONDS_TO_ARM - (armTimer / 1000));
-    if (armTimer > (SECONDS_TO_ARM * 1000)) {  //hold down both buttons for specified time
+    if (armTimer > (SECONDS_TO_ARM * 1000)) 
+    { // Countdown finished. Rocket has been armed
       Serial.printf("Rocket armed: Startup-->Groundidle\n");
       tone(BUZZER,TONE_SUCCESS,1000);
       delay(1000);
-      previousState = 0;
       nextState = 1;
     }
-  } else {
+  } else 
+  { // Reset countdown if arming buttons are not active
     armTimer = 0;
     Serial.println("Idle");
   }
-  
+
+  //Blink LED rapidly to indicate waiting for arming.
   LEDBlink(LED_GREEN, DUTY_CYCLE / 2, LED_TIME_ON);
 
-  // Implement check to see if sensors are still runing
+  // TODO: Implement check to see if sensors are still runing
   
   return nextState;
 }
 
-/* 
- *  int groundidle(): 
- *  State in which the rocket is armed but ignition has not yet been set off
- *  Plays warning sound and collects altitude + orientation data but otherwise stays inactive
- *  Detects liftoff or boost() through an upwards acceleration measurement 
- */
-int groundidle() {
+/********************************************************************************
+ *  Ground Idle State Function : int groundidle() 
+ *      returns                : nextState, Next state function to run
+ *  
+ *  Rocket armed, waiting for ignition and liftoff.
+ *  Starts orentation and altitude data collection.
+ *  Detects lifoff through significant upwards acceleration.
+ ********************************************************************************/
+int groundidle() 
+{
   int nextState = 1;
 
+  // Blink both status LEDs to indicate armed.
   LEDBlink(LED_GREEN, DUTY_CYCLE, LED_TIME_ON);
   LEDBlink(LED_RED, DUTY_CYCLE, LED_TIME_ON);
 
-  // Add buzzer beep
+  // Add periodic buzzer beep
 
+  // Update sensor data
   BMP388Status = getAlt(&alt, &apogee);
   BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
 
-  /* if acceleration in the x direction (towards nosecone) is greater than set threshold */
-  if (accelVector[0] >= ACCEL_TAKEOFF_THRESHOLD) { 
+  if (accelVector[0] >= ACCEL_TAKEOFF_THRESHOLD) 
+  { // if acceleration in the x direction (towards nosecone) is greater than set threshold:
+    // Launched!
     nextState = 2;
-    previousState = 1;
     digitalWrite(LED_GREEN,LOW);
     digitalWrite(LED_RED,LOW);
     tone(BUZZER, TONE_VICTORY, 1000); //Victory Screech: runs buzzer for 1s when liftoff is detected; MAX f needed
@@ -251,39 +259,38 @@ int groundidle() {
   return nextState;
 }
 
-/* 
- *  int boost():
- *  State in which the rocket is under powered flight
- *  Collects and stores altitude and orientation data
- *  Determines gimbal and servo angle through a DCM applied to the orientation data
- *  Uses a PID loop to move the servo to the desired angle
- *  Detects both Burnout and Freefall - Burnout through decreasing acceleration forward and Freefall through decreasing altitude
- *  May bypass the Burnout stage completely if the acceleration data forward fails
- */
-int boost() {
-
+/********************************************************************************
+ *  Powerflight State Function : int bost() 
+ *      returns                : nextState, Next state function to run
+ *  
+ *  Rocket is now in powered flight.
+ *  Collects orientation and altitude data.
+ *  Runs PID Loop to adjust gimbal angle and remain upright.
+ *  Detects burnout through loss of acceleration -> head to burnout state.
+ *  Detects freefall through decreasing altitude -> head to freefall state.
+ ********************************************************************************/
+int boost() 
+{
   int nextState = 2;
 
+  // Update sensor data
   BMP388Status = getAlt(&alt, &apogee);
   BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
   
-  // Run PID and adjust servos accordingly
+  // TODO: Run PID and adjust servos accordingly
 
   // If acceleration is in roughly same direction as gravity, motor has burned out. grav dot accel > 0
-
   double accelDown = gravVector[0] * accelVector[0] + gravVector[1] * accelVector[1] + gravVector[2] * accelVector[2];
 
   if (accelDown > 0)
-  {
+  { // No longer acelerating upwards head to burnout
     Serial.printf("Burnout detected: Boost-->Burnout\n");
-    previousState = 2;
     nextState = 3;
     
     // Center Servos
   } else if (BMP388Status == 2)
-  {
+  { // Rocket Started Falling, missed burnout head to freefall.
     Serial.printf("Apogee detected: Boost-->Freefall\n");
-    previousState = 2;
     nextState = 4;
 
     // Center Servos
@@ -292,72 +299,79 @@ int boost() {
   return nextState;
 }
 
-/* 
- *  int burnout():
- *  State in which the rocket exits powered flight until apogee is reached
- *  Collects and stores altitude and orientation data
- *  Detects decreasing altitude to signal that apogee has been reached, and that the rocket is in freefall()
- */
+/********************************************************************************
+ *  Burnout State Function    : int burnout() 
+ *      returns               : nextState, Next state function to run
+ *  
+ *  Rocket is no longer in powerd flight but still moving upwards.
+ *  Collects orientation and altitude data.
+ *  Detects freefall through decreasing altitude
+ ********************************************************************************/
 int burnout(){
   int nextState = 3;
 
+  // Update sensor data
   BMP388Status = getAlt(&alt, &apogee);
   BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
   
-  if (BMP388Status == 2){ 
+  if (BMP388Status == 2)
+  { // Rocket started falling, head to freefall.
     nextState = 4;
-    previousState = 3;
     Serial.printf("Apogee detected: Burnout-->Freefall\n");
   }
   return nextState;
 }
 
-/*
- * int freefall():
- * State before reaching the alititude required to safely deploy the parachute
- * Collects and stores altitude and orientation data
- * Parachute currently set to deploy at apogee
- * Skeleton for future projects that may need this state
- */
-int freefall(){
-  
+/********************************************************************************
+ *  Freefall State Function   : int freefall() 
+ *      returns               : nextState, Next state function to run
+ *  
+ *  State before parachute deploy.
+ *  Collects orientation and altitude data.
+ *  Detects time for parachute deploy when threshold altitude is crossed.
+ ********************************************************************************/
+int freefall()
+{
   int nextState = 4;
-  
+
+  // Update sensor data
   BMP388Status = getAlt(&alt, &apogee);
   BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
-
-  if (alt <= CHUTE_DEPLOY_ALT){ 
+  
+  if (alt <= CHUTE_DEPLOY_ALT)
+  { // Under parachute deploying altitude head to chute deploy.
     nextState = 5;
-    previousState = 4;
     Serial.printf("Chute Deployment Altitude detected: Freefall-->Chute\n");
   }
   return nextState;
 }
 
-/* 
- *  int chute():
- *  State for parachute deployment
- *  Collects and stores altitude and orientation data
- *  Checks for freefall acceleration and altitude for a safe time to deploy chute
- *  Releases two chute charges as a redundancy
- *  If both charges fail to deploy the chute, program tries again 1 second after charge 2 until lowest altitude (20m) is reached
- *  Detects landed gravity (similar to hovering, 9m/s2 up) for landing()
- */
-int chute(){
+/********************************************************************************
+ *  Chute Deploy State Function : int chute() 
+ *      returns                 : nextState, Next state function to run
+ *  
+ *  Rocket attempts to deploy parachute.
+ *  Collects orientation and altitude data.
+ *  If first chute charge does not work it uses backup charge
+ *  If sucessfully deployed waits till accel ~ 0 to go to landed state
+ *  If chute does not successfully deploy head to error state.
+ ********************************************************************************/
+int chute()
+{
   int nextState = 5;
 
+  // Update sensor data
   BMP388Status = getAlt(&alt, &apogee);
   BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
 
+  // Calculate accurate acceleration magnitude that is towards the ground.
   double gmag = sqrt(gravVector[0]*gravVector[0] + gravVector[1]*gravVector[1] + gravVector[2]*gravVector[2]);
-  
   double accelDown = (gravVector[0] * accelVector[0] + gravVector[1] * accelVector[1] + gravVector[2] * accelVector[2]) / gmag;
 
-  // Need to figure out how much downwards acceleration is acceptable
-  // If falling with too much acceleration, and above a certain altitude, deploy all chutes charges possible.
-  // Note only if BMP388 is confirmed to be working
+  // TODO: Need to figure out how much downwards acceleration is acceptable
   if ((accelDown > gmag / 2) && alt > 20 && BMP388Status != 0) 
-  {
+  { // If falling with too much acceleration, and above a certain altitude, deploy all chutes charges possible (with delay).
+    // Note: only if BMP388 is confirmed to be working
     if (charge1)
     {
       digitalWrite(CHUTE_1_PIN, HIGH);
@@ -365,7 +379,7 @@ int chute(){
       Serial.println("Chute charge 1 active");
       chuteChargeTimer = 0;
     } else if (charge2 && chuteChargeTimer > CHUTE_DELAY)
-    {
+    { // Chute Charge 1 used and still not slower than falling, use charge 2.
       digitalWrite(CHUTE_1_PIN, LOW);
       Serial.println("Chute charge 1 deactivated");
       digitalWrite(CHUTE_2_PIN, HIGH);
@@ -373,7 +387,7 @@ int chute(){
       charge2 = false;
       chuteChargeTimer = 0;
     } else if (!charge1 && !charge2 && chuteChargeTimer > CHUTE_DELAY)
-    {
+    { // both chute charges used and still in freefall, chute failure, head to failure state. Scram!
       digitalWrite(CHUTE_2_PIN, LOW);
       Serial.println("Chute charge 2 deactivated");
       Serial.println("Chute failure");
@@ -381,25 +395,26 @@ int chute(){
     }
   }
   
-  if ((-0.1 < accelDown) && (accelDown < 0.1)){ // if acceleration downwards is within a small range of 0, landing detected.
+  if ((-0.1 < accelDown) && (accelDown < 0.1))
+  { // Downwards acceleration near 0, on ground, head to landing state.
     nextState = 6; 
-    previousState = 5;
     Serial.printf("Landing detected: Chute-->Landing\n");
   }
   
   return nextState;
 }
 
-/*
- * int landing():
- * Last state where rocket is grounded after flight
- * Plays beeping noise to be located and to signal that the last stage has been reached
- * Saves all data to the SD card
- */
+/********************************************************************************
+ *  Landed State Function    : int landing() 
+ *      returns               : nextState, Next state function to run
+ *  
+ *  Rocket has landed. Other functionality to be implemented.
+ ********************************************************************************/
 int landing(){
   int nextState = 6;
   
   // TODO: Add check chute failure state.
+  // TODO: Add victory buzz, adds to ability to find rocket.
   
   //Under current conditions, this will run in a loop indefitely. Either the main loop should stop after landing or the write function call should be called at the end of chute().
   while(1);
@@ -407,16 +422,21 @@ int landing(){
   return nextState;
 }
 
-/*
- * int failure():
- * Placeholder state for failures that do not go directly to chute() or landing()
- */
+/********************************************************************************
+ *  Failure State Function    : int failure() 
+ *      returns               : nextState, Next state function to run
+ *  
+ *  Oh no! Something went wrong what do we do now?
+ ********************************************************************************/
 int failure() {
-  
+  // Update sensor data
   BMP388Status = getAlt(&alt, &apogee);
   BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
+  
   Serial.printf("Failure\n");
-  while(1);
-  int nextStage = 7;
+  
+  while(1); // Gets stuck here, TODO: Implement course of action for complete failure.
+  
+  int nextStage = -1;
   return nextStage;
 }
