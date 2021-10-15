@@ -8,23 +8,29 @@
 #include <Servo.h>
 #include <SD.h>
 
-// Pins for external componets and associated counters
+// Pins for external componets and associated constants
 const int SERVO_PIN_PITCH = 0;
 const int SERVO_PIN_YAW = 1;
 
 const int BUZZER = 4;
 
-const int TONE_SUCCESS = 523; // In Hz Currently C5
-const int TONE_FAILURE = 261; // In Hz currently C4
-const int TONE_VICTORY = 1046; // In Hz Currently C6
+const int TONE_SUCCESS = 523; // In Hz, Currently C5
+const int TONE_FAILURE = 261; // In Hz, currently C4
+const int TONE_VICTORY = 1046; // In Hz, Currently C6
 
 const int CHUTE_1_PIN = 2;
 const int CHUTE_2_PIN = 3;
 
+const int CHUTE_DELAY = 1000; // Time between chute charge activations in millis. 2nd charge only used if 1st fails
+
+const int TIME_FREEFALL_THRESHOLD = 100; // How long in Mills Altitude needs to be decreasing to declare freefall
+const int ACCEL_TAKEOFF_THRESHOLD = 12; // The Threshold for acceleration that triggers boost phase m/s^2
+const int CHUTE_DEPLOY_ALT = 1000000; // Altitude under which chute is deployed, currently large for immediate chute deployment
+
 const int ARM_B1_PIN = 5;
 const int ARM_B2_PIN = 6;
 
-const int SECONDS_TO_ARM = 10; // Amount of seconds need to hold down both buttons to arm
+const int SECONDS_TO_ARM = 10; // Number of seconds needed to hold down both buttons to arm
 
 const int LED_GREEN = 7;
 const int LED_RED = 8;
@@ -56,20 +62,29 @@ int previousState = 0; //Place to store index of the previous flight function
 float alts[4];
 float orient[20];
 
+int BNO055Status = 0;
+double quaternion[4]; // current Raw Quaternion Vector from BNO055
+double accelVector[3]; // current Acceleration Vector
+double avelVector[3]; // current Angular Velocity Vector
+double gravVector[3]; // current gravitational vector relative to absolute orientation
+
+int BMP388Status = 0;
+double alt = 0; // current altitude in m
+double apogee = 0; // maximum altitued reached in m
+
 bool charge1 = true;
 bool charge2 = true;
 bool timer2Start = true;
 
 // Cycle counters
 int errorCycle = 0;
-int buttonCycles = 0;
 
 // Various timers
 elapsedMillis PROGRAM_TIME = 0; // Time since start of program do not reset
 elapsedMillis armTimer = 0; // Elapsed time while arming buttons are held.
 
-elapsedMillis timer = 0;
-elapsedMillis timer2 = 0;
+elapsedMillis chuteChargeTimer = 0;
+elapsedMillis freefallTimer = 0;
 
 
 /* Initializes all the sensors, the required variables, and calibrates data */
@@ -107,7 +122,7 @@ void setup() {
   { 
     // prevent program from continuing if any component failed to initialize
     Serial.println("Initialization failed");
-    tone(BUZZER,4000);
+    tone(BUZZER,TONE_FAILURE);
     digitalWrite(LED_RED, HIGH);
     while(1){}
   }
@@ -131,20 +146,17 @@ void loop() {
    * BMP388 stops working
    * BNO055 stops working
    * INA260 reads an average voltage drop of 6V */
-  if (alts[0] == 0 || orient[0] == 0 || ina260.readBusVoltage() <= (avgVoltage - 6000) ) { 
+  if (BMP388Status == 0 || BNO055Status == 0 || ina260.readBusVoltage() <= (avgVoltage - 6000) ) { 
       ++errorCycle;
       //if the problem continues for 10 cycles in a row, proceed to correction
       if (errorCycle >= MAX_ERROR_CYCLES) {
         tone(BUZZER, TONE_FAILURE);
         
-        //lock gimbal
-        servoPitch.write(90);
-        servoYaw.write(90);
+        //TODO: lock gimbal
   
         //TODO: save to SD card
   
-        //send to chute or landed state
-        timer = 0;
+        //send to  failure state ???
         previousState = state;
         state = chute();
       }
@@ -203,7 +215,7 @@ int startup() {
     }
   } else {
     armTimer = 0;
-    Serial.print("Idle");
+    Serial.println("Idle");
   }
   
   LEDBlink(LED_GREEN, DUTY_CYCLE / 2, LED_TIME_ON);
@@ -227,11 +239,11 @@ int groundidle() {
 
   // Add buzzer beep
 
-  getAlt(alts);
-  orientation(orient);
+  BMP388Status = getAlt(&alt, &apogee);
+  BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
 
-  /* if acceleration in the x direction (towards nosecone) is greater than 12 */
-  if (orient[7] >= 12) { 
+  /* if acceleration in the x direction (towards nosecone) is greater than set threshold */
+  if (accelVector[0] >= ACCEL_TAKEOFF_THRESHOLD) { 
     nextState = 2;
     previousState = 1;
     digitalWrite(LED_GREEN,LOW);
@@ -255,30 +267,31 @@ int boost() {
 
   int nextState = 2;
 
-  getAlt(alts);
-  orientation(orient);
-  //float* gimbalAngle = findGimbalAngles(orient);
-  float servoAngle[] = {90, 90}; //PID(gimbalAngle);
+  BMP388Status = getAlt(&alt, &apogee);
+  BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
+  
+  // Run PID and adjust servos accordingly
 
-  servoPitch.writeMicroseconds(servoAngle[0]);
-  servoYaw.writeMicroseconds(servoAngle[1]);
+  // If acceleration is in roughly same direction as gravity, motor has burned out. grav dot accel > 0
 
-  /*if acceleration in the direction of the rocket is less than 5 m/s2, assume burnout or if apogee is detected without burnout (decreasing altitude) */
-  float accelForward = orient[7]*orient[1]+orient[8]*orient[2]+orient[9]*orient[3];  //dot product of acceleration and direction vectors
-  if (accelForward <= 5  || alts[3] > 5) {  
-    if (accelForward <= 5) {
-      Serial.printf("Burnout detected: Boost-->Burnout\n");
-      nextState = 3;
-    }
-    else {
-      Serial.printf("Apogee detected: Boost-->Freefall\n");
-      nextState = 4;
-    }
+  double accelDown = gravVector[0] * accelVector[0] + gravVector[1] * accelVector[1] + gravVector[2] * accelVector[2];
+
+  if (accelDown > 0)
+  {
+    Serial.printf("Burnout detected: Boost-->Burnout\n");
     previousState = 2;
-    servoPitch.write(90);
-    servoYaw.write(90);
-    alts[3] = 0;
-  } 
+    nextState = 3;
+    
+    // Center Servos
+  } else if (BMP388Status == 2)
+  {
+    Serial.printf("Apogee detected: Boost-->Freefall\n");
+    previousState = 2;
+    nextState = 4;
+
+    // Center Servos
+  }
+  
   return nextState;
 }
 
@@ -291,10 +304,10 @@ int boost() {
 int burnout(){
   int nextState = 3;
 
-  getAlt(alts);
-  orientation(orient);
+  BMP388Status = getAlt(&alt, &apogee);
+  BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
   
-  if (alts[3] > 5){ 
+  if (BMP388Status == 2){ 
     nextState = 4;
     previousState = 3;
     Serial.printf("Apogee detected: Burnout-->Freefall\n");
@@ -310,14 +323,13 @@ int burnout(){
  * Skeleton for future projects that may need this state
  */
 int freefall(){
-  int nextState = 4;
-
-  int chuteDeployAltitude = 1000000; //Determine threshold altitude for deploying parachutes; set to 1000000 due to immediate chute deployment upon reaching apogee
   
-  getAlt(alts);
-  orientation(orient);
+  int nextState = 4;
+  
+  BMP388Status = getAlt(&alt, &apogee);
+  BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
 
-  if (alts[1] <= chuteDeployAltitude){ 
+  if (alts[1] <= CHUTE_DEPLOY_ALT){ 
     nextState = 5;
     previousState = 4;
     Serial.printf("Chute Deployment Altitude detected: Freefall-->Chute\n");
@@ -329,7 +341,6 @@ int freefall(){
  *  int chute():
  *  State for parachute deployment
  *  Collects and stores altitude and orientation data
- *  Doubles as an emergency state for errors - checks previous state to ensure that it does not go off while on the ground
  *  Checks for freefall acceleration and altitude for a safe time to deploy chute
  *  Releases two chute charges as a redundancy
  *  If both charges fail to deploy the chute, program tries again 1 second after charge 2 until lowest altitude (20m) is reached
@@ -338,46 +349,47 @@ int freefall(){
 int chute(){
   int nextState = 5;
 
-  getAlt(alts);
-  orientation(orient);
+  BMP388Status = getAlt(&alt, &apogee);
+  BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
 
-  /*if the acceleration is below a certain threshold, above a certain altitude (with the exception of altitude data loss), 
-      and the previous stage was not a ground stage, deploy chute charges */
-  float accelMag = sqrt(orient[7]*orient[7]+orient[8]*orient[8]+orient[9]*orient[9]);
-  if (accelMag < 2 && (alts[0] != 1 || alts[1] >= 20) && (previousState >= 2 && previousState != 6)) { 
-    //If less than 1 second has passed and the first charge has not deployed, send a charge through the MOSFET1
-    if (timer <= 1000 && charge1) {
+  double gmag = sqrt(gravVector[0]*gravVector[0] + gravVector[1]*gravVector[1] + gravVector[2]*gravVector[2]);
+  
+  double accelDown = (gravVector[0] * accelVector[0] + gravVector[1] * accelVector[1] + gravVector[2] * accelVector[2]) / gmag;
+
+  // Need to figure out how much downwards acceleration is acceptable
+  // If falling with too much acceleration, and above a certain altitude, deploy all chutes charges possible.
+  // Note only if BMP388 is confirmed to be working
+  if ((accelDown > gmag / 2) && alt > 20 && BMP388Status != 0) 
+  {
+    if (charge1)
+    {
       digitalWrite(CHUTE_1_PIN, HIGH);
       charge1 = false;
       Serial.println("Chute charge 1 active");
-    } else if (timer >= 2000 && timer < 4000 && charge2) {  //If 1 second has passed and the second charge has not deployed, send a charge through the MOSFET2
+      chuteChargeTimer = 0;
+    } else if (charge2 && chuteChargeTimer > CHUTE_DELAY)
+    {
       digitalWrite(CHUTE_1_PIN, LOW);
       Serial.println("Chute charge 1 deactivated");
       digitalWrite(CHUTE_2_PIN, HIGH);
       Serial.println("Chute charge 2 active");
       charge2 = false;
-    } else if (!charge1 && !charge2){  //if both charges have been deployed and acceleration still reads freefall (still going through first if-statement), start a second timer
+      chuteChargeTimer = 0;
+    } else if (!charge1 && !charge2 && chuteChargeTimer > CHUTE_DELAY)
+    {
       digitalWrite(CHUTE_2_PIN, LOW);
       Serial.println("Chute charge 2 deactivated");
-      if (timer2Start) {  //so that timer2 only resets once
-        timer2 = 0;
-        timer2Start = false;
-      }
-      if (timer2 >= 1000) {  //if 1 second has passed with acceleration still saying freefall, go to noChute failure
-        timer = 0;
-        charge1 = true;
-        charge2 = true;
-        timer2Start = true;
-        nextState = 5;
-      }
-    } else {}
+      Serial.println("Chute failure");
+      nextState = -1; // TODO: Add a failure state for chute failure.
+    }
   }
-
-  if (accelMag >= 9){ //9 m/s2 to account for gravity once landed
+  
+  if ((-0.1 < accelDown) && (accelDown < 0.1)){ // if acceleration downwards is within a small range of 0, landing detected.
     nextState = 6; 
     previousState = 5;
     Serial.printf("Landing detected: Chute-->Landing\n");
   }
+  
   return nextState;
 }
 
@@ -389,12 +401,10 @@ int chute(){
  */
 int landing(){
   int nextState = 6;
-  if (timer >= 1000) {  //Victory Beeeps :D or over failure tone :(
-    timer = 0;
-    tone(BUZZER, 4000, 500);
-  } 
-
-//Under current conditions, this will run in a loop indefitely. Either the main loop should stop after landing or the write function call should be called at the end of chute().
+  
+  // TODO: Add check chute failure state.
+  
+  //Under current conditions, this will run in a loop indefitely. Either the main loop should stop after landing or the write function call should be called at the end of chute().
   while(1);
   //writeToSD(); 
   return nextState;
@@ -405,7 +415,9 @@ int landing(){
  * Placeholder state for failures that do not go directly to chute() or landing()
  */
 int failure() {
-  orientation(orient);
+  
+  BMP388Status = getAlt(&alt, &apogee);
+  BNO055Status = getOrient(quaternion, accelVector, avelVector, gravVector);
   Serial.printf("Failure\n");
   while(1);
   int nextStage = 7;

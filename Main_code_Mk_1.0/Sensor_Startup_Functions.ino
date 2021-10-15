@@ -133,22 +133,21 @@ int bmpInit(){
   bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
   bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   bmp.setOutputDataRate(BMP3_ODR_50_HZ);
-  
-  getAlt(alts);  //call once to get rid of garbage values
-  alts[1] = 0;
-  alts[2] = 0;
-  alts[3] = 0;
 
+  double a;
+  
+  getAlt(&a, &a);  //call once to get rid of garbage values
+  
   Serial.println("BMP388 Initialized!");
     
   //take an average of 20 altitude values to find the groundAltitude
-  float total = 0;
+  double total = 0;
   for (int i = 0; i < 20; ++i) {
-    getAlt(alts);
-    total += alts[1];
+    getAlt(&a, &a);
+    total += a;
   }
   
-  groundAltitude= total/20;
+  groundAltitude = total/20;
   Serial.printf("Ground Altitude: %f\n",groundAltitude);
 
   return 1;
@@ -232,7 +231,7 @@ int armingInit()
   return 1;
 }
 
-int LEDBlink(int LED, int dutyCycle, int ratio)
+int LEDBlink(int LED, unsigned int dutyCycle, float ratio)
 {
   
   if (PROGRAM_TIME % (dutyCycle) <= (dutyCycle) * ratio)
