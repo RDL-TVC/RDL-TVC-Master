@@ -53,7 +53,7 @@ Servo servoPitch;
 Servo servoYaw;
 
 // Global Variables that carry from cycle to cycle
-float groundAltitude = 0;
+
 float avgVoltage = 0;
 
 int state = 0; // State of the state machine to know which flight function to call. Starts at startup.
@@ -65,8 +65,9 @@ double avelVector[3]; // current Angular Velocity Vector
 double gravVector[3]; // current gravitational vector relative to absolute orientation
 
 int BMP388Status = 0;
-double alt = 0; // current altitude in m
-double apogee = 0; // maximum altitued reached in m
+float groundAltitude = 0;
+float alt = 0; // current altitude in m
+float apogee = 0; // maximum altitued reached in m
 
 bool charge1 = true; // Is chute charge 1 availible?
 bool charge2 = true; // Is chute charge 2 availible?

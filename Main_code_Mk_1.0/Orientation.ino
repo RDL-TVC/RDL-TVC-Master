@@ -43,7 +43,7 @@ int getOrient(double q[4], double aV[3], double avV[3], double gV[3]) {
  *      *a, *maxa              : Pointers to altitued and apogee to be updated
  *  Updates given pointers with new readings from BMP388
  ********************************************************************************/
-int getAlt(double *a, double *maxa) {
+int getAlt(float *a, float *maxa) {
   
   if (!bmp.performReading()) 
   { //error - could not perform reading.
@@ -52,7 +52,7 @@ int getAlt(double *a, double *maxa) {
   }
 
   // Retrieve altitude reading that was just made
-  double altReading = bmp.readAltitude(SL_PRESSURE) - groundAltitude;
+  float altReading = bmp.readAltitude(SL_PRESSURE) - groundAltitude;
 
   // Modify given altitued to new reading.
   *a = altReading;

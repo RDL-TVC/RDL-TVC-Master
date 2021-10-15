@@ -167,12 +167,12 @@ int bmpInit()
 
   Serial.println("BMP388 Initialized.");
 
-  double a;
+  float a;
   
   getAlt(&a, &a);  //call once to get rid of garbage values
     
   //take an average of 20 altitude values to find the starting altitude
-  double total = 0;
+  float total = 0;
   for (int i = 0; i < 20; ++i) {
     getAlt(&a, &a);
     total += a;
