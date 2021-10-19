@@ -207,9 +207,6 @@ void loop(void)
     DCM[2][1] = 2 * (quat.y()*quat.z() - quat.x()*quat.w());
     DCM[2][2] = quat.w()*quat.w() - quat.x()*quat.x() - quat.y()*quat.y() + quat.z()*quat.z();
 
-    /*imu::Quaternion newDir = dir;
-    imu::Quaternion newRoll1 = rollVec1;
-    imu::Quaternion newRoll2 = rollVec2;*/
     PIDLastMill = millis();
   }
 
@@ -217,32 +214,21 @@ void loop(void)
   dt = PIDNextMill-PIDLastMill;
   PIDLastMill = PIDNextMill;
 
-  /*if (dt<10){
-    delay(10-dt);
-  }*/
   delay(20);
   
   PIDFunction(rollVec1, rollVec2, dir, usArray, DCM);
   
-  //Serial.printf("%f   %f   %f   %f   %f   %f\n", dir.x(), dir.y(), dir.z(), rollVec1.x(), rollVec1.y(), rollVec1.z());
-
-  /*double newDirX = DCM[0][0] * dir.x() + DCM[0][1] * dir.y() + DCM[0][2] * dir.z();
-  double newDirY = DCM[1][0] * dir.x() + DCM[1][1] * dir.y() + DCM[1][2] * dir.z();
-  double newDirZ = DCM[2][0] * dir.x() + DCM[2][1] * dir.y() + DCM[2][2] * dir.z();*/
-  //Serial.printf("%f   %f   %f\n", newDirX, newDirY, newDirZ);
-  
-  //Serial.printf("%f   %f\n", usArray[0], usArray[1]);
 }
 
 //argument: double DCM[][3]
 
 void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quaternion dir, double usArray[], double DCM[][3]){
 
-  newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
-  newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();
+  //newRollVec1z = DCM[2][0] * rollVec1.x() + DCM[2][1] * rollVec1.y() + DCM[2][2] * rollVec1.z();
+  //newRollVec2z = DCM[2][0] * rollVec2.x() + DCM[2][1] * rollVec2.y() + DCM[2][2] * rollVec2.z();
   
-  double rolVecAngle = -asin(newRollVec1z);
-  double sidVecAngle = asin(newRollVec2z);
+  //double rolVecAngle = -asin(newRollVec1z);
+  //double sidVecAngle = asin(newRollVec2z);
 
   double testValue1 = -1.0 * (double)rollVec1.x();
   double testValue2 = -1.0 * (double)rollVec2.x();
@@ -252,30 +238,15 @@ void PIDFunction(imu::Quaternion rollVec1, imu::Quaternion rollVec2, imu::Quater
   double theta2 = atan2(testValue2,testValue3);  
 
   //Serial.printf("%f   %f\n", rolVecServoAngle, sidVecServoAngle);
-  Proportional(rolVecAngle, sidVecAngle, proComps);
-  Integral(rolVecAngle, sidVecAngle, total, intComps);
-  Derivative(rolVecAngle, sidVecAngle,lastErrors, derComps);
+  Proportional(theta1, theta2, proComps);
+  Integral(theta1, theta2, total, intComps);
+  Derivative(theta1, theta2,lastErrors, derComps);
 
   double rolDeg = (proComps[0] + intComps[0] + derComps[0]) * RAD_TO_DEG * (0.5);
   double sidDeg = (proComps[1] + intComps[1] + derComps[1]) * RAD_TO_DEG * (0.5);
-
-  /*if (rolDeg > 10){
-    rolDeg = 10;
-  }else if (rolDeg < -10){
-    rolDeg = -10;
-  }
-  
-  if (sidDeg > 10){
-    sidDeg = 10;
-  }else if (sidDeg < -10){
-    sidDeg = -10;
-  }*/
   
   double rolVecServoUS = map(rolDeg, -60, 60, 900, 2100);
   double sidVecServoUS = map(sidDeg, -60, 60, 900, 2100);
-
-  //Serial.printf("DerRol: %f, DerSid: %f, Order Rol: %f, Order Sid %f, rolUS: %f, sidUS: %f\n",derComps[0],derComps[1],rolDeg,sidDeg,rolVecServoUS,sidVecServoUS);
-  //Serial.printf("IntRol: %f, IntSid: %f, Order Rol: %f, Order Sid %f, rolUS: %f, sidUS: %f\n",intComps[0],intComps[1],rolDeg,sidDeg,rolVecServoUS,sidVecServoUS);
 
   servo_pitch.writeMicroseconds(rolVecServoUS);
   servo_yaw.writeMicroseconds(sidVecServoUS);
