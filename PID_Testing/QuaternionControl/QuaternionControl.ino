@@ -7,6 +7,10 @@
 #define SERVO_PIN_PITCH 0
 #define SERVO_PIN_YAW 1
 #define RAD_TO_DEG 57.295779513082320876798154814105
+#define BUZZER 4
+
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
@@ -30,13 +34,15 @@ double PIDLastMill;
 double PIDNextMill;
 double dt;
 
-int armingButton = 5;
-int armingButton2 = 6;
+const int armingPin1 = 5;
+const int armingPin2 = 6;
 int buttonCycles = 0;
-int greenPin = 7;
-int redPin = 8;
 
-int piezoPin = 4;
+int calRun = 100; // amount of cycles for calibration of up direction
+imu::Quaternion upDir;
+bool armed = false;
+float angle[3];  //0 - roll, 1 - pitch, 2 - yaw
+
 
 void setup(void)
 {
@@ -45,10 +51,10 @@ void setup(void)
   servo_pitch.writeMicroseconds(1500);
   servo_yaw.writeMicroseconds(1500);
 
-  pinMode(greenPin,OUTPUT);
-  pinMode(redPin,OUTPUT);
+  pinMode(BUZZER,OUTPUT); //piezo buzzer pin 4
   
   Serial.begin(9600);
+  tone(BUZZER, 4000, 1000);  //Bno calibration start
 
   /* Initialise the sensor */
   if (!bno.begin())
@@ -60,7 +66,6 @@ void setup(void)
   orient[0] = 1;
   delay(1000);
   bno.setExtCrystalUse(true);
-
 
   uint8_t cal, gyro, accel, mag = 0;
   bno.getCalibration(&cal, &gyro, &accel, &mag);
@@ -87,6 +92,10 @@ void setup(void)
     Serial.println(mag);
     delay(1000);
   }
+
+  tone(BUZZER, 3000, 500);  //Bno calibration end
+  delay(500);
+  tone(BUZZER, 4000, 1000);
 }
 
 imu::Quaternion getInverse(imu::Quaternion q) {
@@ -108,38 +117,76 @@ imu::Quaternion getInverse(imu::Quaternion q) {
   return inv;
 }
 
-int fifthRun = 5;
-imu:Quaternion upDir;
-
-void loop(void)
-{
-
-    /* Angle data */
+void loop(void) {
+      /* Angle data */
   imu::Quaternion quat = bno.getQuat();
-  imu::Quaternion qInv = getInverse(quat);
-  //Serial.printf("q = [%5f %5f %5f %5f]         ", quat.w(),quat.x(),quat.y(),quat.z());
-
-  if (fifthRun > 0){
-    fifthRun -= 1;
-    upDir = quat;
-  }
-
-  quat -= upDir;
-
-  double roll = 
-
-
   
-  double rolVecServoUS = map(rolDeg, -60, 60, 900, 2100);
-  double sidVecServoUS = map(sidDeg, -60, 60, 900, 2100);
+  //checks for buttons to be pressed before continuing
+  if(digitalRead(armingPin1) == HIGH && digitalRead(armingPin2) == HIGH) {
+    ++buttonCycles;
+    delay(10);
+    if (buttonCycles >= 500) {  //hold down both buttons for 5s
+      Serial.printf("Rocket armed\n");
+      armed = true;     
+    }
+  } else if(armed) {
+      Serial.printf("Setting up direction:\n");
+      tone(BUZZER, 4000, 1000);  //up direction calibration start 
+      //get servo angles after up direction is calibrated
+      if (calRun > 0){
+        calRun -= 1;
+        upDir = quat;
+      } else {
+        quat.w() -= upDir.w();
+        quat.x() -= upDir.x();
+        quat.y() -= upDir.y();
+        quat.z() -= upDir.z();
+        getAngles(quat,angle);
+      }
+      tone(BUZZER, 3000, 500);  //up direction calibration end
+      delay(500);
+      tone(BUZZER, 4000, 1000);
 
-  servo_pitch.writeMicroseconds(rolVecServoUS);
-  servo_yaw.writeMicroseconds(sidVecServoUS);
+    Serial.printf("Roll = %.4f   Pitch = %.4f   Yaw = %.4f\n", angle[0], angle[1], angle[2]);
+    
+    angle[1] = map(angle[1], -60, 60, 900, 2100);
+    angle[2] = map(angle[2], -60, 60, 900, 2100);
   
-  usArray[0] = rolVecServoUS;
-  usArray[1] = sidVecServoUS;
+    servo_pitch.writeMicroseconds(angle[1]);
+    servo_yaw.writeMicroseconds(angle[2]);
+    
+  } else {
+    buttonCycles = 0;
+  } 
+  
 }
 
+int getAngles(imu::Quaternion q, float angle[]) {
+  // roll (x-axis rotation)
+    double sinr_cosp = 2 * (q.w() * q.x() + q.y() * q.z());
+    double cosr_cosp = 1 - 2 * (q.x() * q.x() + q.y() * q.y());
+    angle[0] = std::atan2(sinr_cosp, cosr_cosp);
+    
+  // pitch (y-axis rotation)
+  double sinp = 2 * (q.w() * q.y() - q.z() * q.x());
+    if (std::abs(sinp) >= 1) {
+        angle[1] = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
+    } else {
+        angle[1] = std::asin(sinp);
+    }
+    
+  // yaw (z-axis rotation)
+  double siny_cosp = 2 * (q.w() * q.z() + q.x() * q.y());
+  double cosy_cosp = 1 - 2 * (q.y() * q.y() + q.z() * q.z());
+  angle[2] = std::atan2(siny_cosp, cosy_cosp);
+
+  angle[0] = angle[0]*180/PI;
+  angle[1] = angle[1]*180/PI;
+  angle[2] = angle[2]*180/PI;
+  return 1;
+}
+
+/*
 void Proportional(double angleRol, double angleSid, double proComps[]){
   double pCoef = 0.7; // old value 0.6
   double errorRol = -angleRol;
@@ -195,3 +242,4 @@ void Derivative(double angleRol, double angleSid, double lastErrors[], double de
   lastErrors[1] = errorSid;
   
 }
+*/
