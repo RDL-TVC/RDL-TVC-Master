@@ -98,27 +98,8 @@ void setup(void)
   tone(BUZZER, 4000, 1000);
 }
 
-imu::Quaternion getInverse(imu::Quaternion q) {
-  imu::Quaternion conj;
-  conj.w() = q.w();
-  conj.x() = -q.x();
-  conj.y() = -q.y();
-  conj.z() = -q.z();
-
-  double norm = sqrt(q.w() * q.w() + q.x() * q.x() + q.y() * q.y() + q.z() * q.z());
-
-  imu::Quaternion inv;
-
-  inv.w() = conj.w() / norm;
-  inv.x() = conj.x() / norm;
-  inv.y() = conj.y() / norm;
-  inv.z() = conj.z() / norm;
-
-  return inv;
-}
-
 void loop(void) {
-      /* Angle data */
+      
   imu::Quaternion quat = bno.getQuat();
   
   //checks for buttons to be pressed before continuing
@@ -126,34 +107,40 @@ void loop(void) {
     ++buttonCycles;
     delay(10);
     if (buttonCycles >= 500) {  //hold down both buttons for 5s
-      Serial.printf("Rocket armed\n");
+      Serial.printf("Rocket armed, release buttons\n");
       armed = true;     
+      tone(BUZZER, 4000, 1000);  //armed noise
     }
   } else if(armed) {
       Serial.printf("Setting up direction:\n");
-      tone(BUZZER, 4000, 1000);  //up direction calibration start 
       //get servo angles after up direction is calibrated
-      if (calRun > 0){
-        calRun -= 1;
+      if (calRun >= 0){
+        --calRun;
         upDir = quat;
+        
+       Serial.printf("Calibration run: %d     ", calRun);
+       Serial.printf("%.2f   %.2f   %.2f   %.2f\n", upDir.z(), upDir.x(), upDir.y(), upDir.z());
+        
+        if (calRun == 0) {
+          tone(BUZZER, 3000, 500);  //up direction calibration end
+          delay(500);
+          tone(BUZZER, 4000, 1000);
+        }
       } else {
         quat.w() -= upDir.w();
         quat.x() -= upDir.x();
         quat.y() -= upDir.y();
         quat.z() -= upDir.z();
         getAngles(quat,angle);
-      }
-      tone(BUZZER, 3000, 500);  //up direction calibration end
-      delay(500);
-      tone(BUZZER, 4000, 1000);
-
-    Serial.printf("Roll = %.4f   Pitch = %.4f   Yaw = %.4f\n", angle[0], angle[1], angle[2]);
     
-    angle[1] = map(angle[1], -60, 60, 900, 2100);
-    angle[2] = map(angle[2], -60, 60, 900, 2100);
-  
-    servo_pitch.writeMicroseconds(angle[1]);
-    servo_yaw.writeMicroseconds(angle[2]);
+        Serial.printf("Roll = %.4f   Pitch = %.4f   Yaw = %.4f\n", angle[0], angle[1], angle[2]);
+        
+        angle[1] = map(angle[1], -60, 60, 900, 2100);
+        angle[2] = map(angle[2], -60, 60, 900, 2100);
+      
+        servo_pitch.writeMicroseconds(angle[1]);
+        servo_yaw.writeMicroseconds(angle[2]);
+      }
     
   } else {
     buttonCycles = 0;
