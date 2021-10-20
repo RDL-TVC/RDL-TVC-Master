@@ -4,6 +4,7 @@
  * 
  * Manual Change Log (Complementary to git)
  * 10/13/2021 : v0.1.0 : First Test version created, needs to be tested
+ * 10/19/2021 : v0.2.0 : Still Needs to be tested, however based on data recieved from BNO_Test_Inclination, code has been modified.
  */
 
 
@@ -13,27 +14,31 @@
 #include <utility/imumaths.h>
 #include <Servo.h>
 
-// Defining Pins for external devices
-#define SERVO_PIN_Y 0 // pin for servo that rotates gimble about y axis
-#define SERVO_PIN_Z 1 // pin for servo that rotates gimble about z axis
-
-#define ARM_B1 5
-#define ARM_B2 6
-
-#define LED_GREEN 7
-#define LED_RED 8
-
-#define PIEZO 4
-
-#define DUTY_CYCLE 1000 // Length of total LED duty cycle in millis
-#define LED_DUTY_CYCLE .05 // LED will be on for this fraction of duty cycle
-
-#define SECONDS_TO_ARM 10 // Seconds
-
-#define MAX_GIMBAL_ANGLE 10 // Degrees
-
 #define RAD_TO_DEG 57.295779513082320876798154814105
 #define SERVO_TO_GIMBAL 0.43; // Rad/Rad  (or deg/deg) to convert wanted gimble angle to servo angle with inverse of this.
+
+// Defining Pins for external devices
+const int SERVO_PIN_Y = 0; // pin for servo that rotates gimble about y axis
+const int SERVO_PIN_Z = 1; // pin for servo that rotates gimble about z axis
+
+const int MAX_GIMBAL_ANGLE = 10; // Degrees
+
+const int ARM_B1 = 5;
+const int ARM_B2 = 6;
+
+const int SECONDS_TO_ARM = 10; // Seconds
+
+const int LED_GREEN = 7;
+const int LED_RED = 8;
+
+const int DUTY_CYCLE = 1000; // Length of total LED duty cycle in millis
+const float LED_TIME_ON = .05; // LED will be on for this fraction of duty cycle
+
+const int PIEZO = 4;
+
+const int TONE_SUCCESS = 523; // In Hz, Currently C5
+const int TONE_FAILURE = 261; // In Hz, currently C4
+const int TONE_VICTORY = 1046; // In Hz, Currently C6
 
 const double P = 0.1;
 const double I = 0; // given that inclination is always positive, this term will only accumulate (should not use for this controller)
@@ -43,16 +48,17 @@ const double D = 0;
 double errorLast = 0; // Rad
 double errorSum = 0; // Rad * Sec
 
-unsigned long timeStart; // Time in Millis at begining of ARM Sequence
-unsigned long timeLast; // Time in millis at last PID loop
-
 double targetInclination = 0; // Target Inclination for PID loop in RAD
 // double targetHeading = 0; // Target absolute heading for PID loop (not implemented)
 
 // Used in Loop to be updated
-double i;
-double w;
 double a;
+
+bool dutyCyclePrintFlag = false;
+
+elapsedMillis PROGRAM_TIME = 0;
+elapsedMillis armTimer = 0;
+elapsedMillis PIDTimer = 0;
 
 // Defining Sensor and servo objects
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
@@ -65,7 +71,7 @@ void setup(void)
   // Initialise Servos
   servoY.attach(SERVO_PIN_Y);
   servoZ.attach(SERVO_PIN_Z);
-
+  
   // Set Pin mode for status LED
   pinMode(LED_GREEN,OUTPUT);
   pinMode(LED_RED,OUTPUT);
@@ -73,14 +79,18 @@ void setup(void)
   // Connect to Serial
   Serial.begin(9600);
 
-  /* Initialise the sensor */
-  if (!bno.begin())
-  {
-    /* There was a problem detecting the BNO055 ... check your connections */
-    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-    while (1);
-  }
+  Serial.print("Initializing BNO055...");
   
+  if (!bno.begin())
+  { // BNO055 was not able to initialize
+    Serial.println("BNO055 failed to initialize.");
+    tone(PIEZO,TONE_FAILURE);
+    digitalWrite(LED_RED, HIGH);
+    while(1);
+  }
+
+  Serial.println("BNO055 Initialized. Now Calibrating.");
+
   delay(1000);
   bno.setExtCrystalUse(true);
 
@@ -112,7 +122,7 @@ void setup(void)
   }
   
   // Sensors Initialize Test Gimbal
-  tone(PIEZO,4000);
+  tone(PIEZO,TONE_SUCCESS);
   digitalWrite(LED_GREEN,HIGH);
 
   testGimbal();
@@ -120,89 +130,116 @@ void setup(void)
   // Ready to Arm
   noTone(PIEZO);
   delay (500);
-  tone(PIEZO,4000, 500);
+  tone(PIEZO,TONE_SUCCESS, 500);
   delay (1000);
-  tone(PIEZO,4000, 500);
-  
-  timeStart = millis();
-  
-  while(true){
-      if(digitalRead(ARM_B1) == HIGH && digitalRead(ARM_B2) == HIGH) {
-        Serial.print("Seconds till armed: ");
-        Serial.println(SECONDS_TO_ARM - ((millis() - timeStart)/1000));
-        if (millis() - timeStart > (SECONDS_TO_ARM * 1000)) {  //hold down both buttons for specified time
-          Serial.printf("Rocket armed: Startup-->Groundidle\n");
-          tone(PIEZO,4000,1000);
-          break;
-        }
-      } else {
-        timeStart = millis();
-        Serial.print("Seconds till armed: ");
-        Serial.println(SECONDS_TO_ARM);
-      }
 
-      // Half duty cycle to let user know that it is waiting to be armed
-      if ((millis() - timeStart) % (DUTY_CYCLE / 2) <= (DUTY_CYCLE / 2) * LED_DUTY_CYCLE)
+  armTimer = 0;
+  bool armTimerPrintFlag = false;
+  
+  while(1)
+  {
+    if(digitalRead(ARM_B1) == HIGH && digitalRead(ARM_B2) == HIGH) 
+    { // If both arming buttons are pressed, start counting down.
+      if ((armTimer % 1000) < 500)
       {
-      digitalWrite(LED_GREEN,HIGH);
+        if (!armTimerPrintFlag)
+        {
+          Serial.print("Arming, Seconds till armed: ");
+          Serial.println(SECONDS_TO_ARM - (armTimer / 1000));
+          armTimerPrintFlag = true;
+        }
       } else
       {
-        digitalWrite(LED_GREEN,LOW);  
+        armTimerPrintFlag = false;
       }
-      
-      delay(100);
-   }
+      if (armTimer > (SECONDS_TO_ARM * 1000)) 
+      { // Countdown finished. Rocket has been armed
+        Serial.println("Rocket armed");
+        tone(PIEZO,TONE_SUCCESS,1000);
+        delay(1000);
+        break;
+      }
+    } else 
+    { // Reset countdown if arming buttons are not active
+      if (LEDBlink(LED_GREEN, DUTY_CYCLE, LED_TIME_ON))
+      {
+        if (!dutyCyclePrintFlag)
+        {
+          Serial.println("Idle");
+          dutyCyclePrintFlag = true;
+        }
+      } else 
+      {
+        dutyCyclePrintFlag = false;
+      }
+      armTimer = 0;
+    }
+    
+  }
 
   // Rocket is now armed. Stay away!
   Serial.println("Rocket armed, why are you still looking at serial!?");
   digitalWrite(LED_GREEN,LOW);
-  tone(PIEZO,4000,1000);
   digitalWrite(LED_RED,HIGH);
-  delay(2000);
+  
+  tone(PIEZO, TONE_SUCCESS, 500);
+  delay(500);
+  tone(PIEZO, TONE_VICTORY, 250);
+  delay(250);
+
+  PIDTimer = 0;
   
 }
 
 void loop(void)
 {
-  getOrient(&i, &w);
 
-  a = PID(i - targetInclination);
+  double i;
+  double yz[2];
+  
+  getOrient(&i, yz);
 
-  angle2Servo(a, w);
+  double a = PID(i - targetInclination);
 
-  if ((millis() - timeStart) % DUTY_CYCLE <= DUTY_CYCLE * LED_DUTY_CYCLE)
+  angle2Servo(a, yz);
+
+  if (LEDBlink(LED_GREEN, DUTY_CYCLE, LED_TIME_ON))
   {
-    digitalWrite(LED_GREEN,HIGH);
-    digitalWrite(LED_RED,HIGH);
-  } else
+    if (!dutyCyclePrintFlag)
+    {
+      Serial.printf("Inclination: %d, PID Angle Out: %d, Y Comp: %f, Z Comp: %f", i, a, yz[0], yz[1]);
+      dutyCyclePrintFlag = true;
+    }
+  } else 
   {
-    digitalWrite(LED_GREEN,LOW);
-    digitalWrite(LED_RED,LOW);
+    dutyCyclePrintFlag = false;
   }
+  
+  LEDBlink(LED_RED, DUTY_CYCLE, LED_TIME_ON);
 
-  delay(10);
 }
-
-//argument: double DCM[][3]
 
 /* Using quaternion to euler XZX conversion.
 * Get inclination through the 2nd rotation
 * Get orientation of servos from 3rd rotation
 * implementation as seen in MATLAB qparts2feul.m
 */
-void getOrient(double *i, double *w)
+void getOrient(double *i, double yz[2])
 {
-  imu::Quaternion quat = bno.getQuat();
+  imu::Vector<3> g = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
 
-  double q[4] = {quat.w(), quat.x(), quat.y(), quat.z()};
+  double grav[3] = {g.x(), g.y(), g.z()};
 
   // Inclination: angle from upwards x-axis
   // we want this to be 0, Use PID to do so
-  *i = acos(2 * (q[0]*q[0] + q[1]*q[1]) - 1); // Rad
-  
-  // angle of Z axis away from inertial ZY plane measured on rotated ZY frame
-  // needed to determine how servos will partition wanted angle.
-  *w = atan2(2 * (q[0]*q[2] + q[3]*q[1]), 2 * (q[0]*q[3] - q[1]*q[2])); // Rad
+  *i = acos(grav[0]/sqrt(grav[0] * grav[0] + grav[1] * grav[1] + grav[2] * grav[2]));
+
+  // other code relies on yz being a unit vector.
+
+  double gyz = sqrt(grav[1]*grav[1] + grav[2]*grav[2]);
+
+  yz[0] = grav[1]/gyz;
+  yz[1] = grav[2]/gyz;
 }
 
 /*
@@ -212,15 +249,14 @@ void getOrient(double *i, double *w)
 
 double PID(double e)
 {
-  unsigned long timeNow = millis();
-  unsigned long dt = timeNow - timeLast;
+  unsigned long dt = PIDTimer;
   
   errorSum += e * dt / 1000;
   
   double out = P * e + I * errorSum + ((e - errorLast) * 1000 / dt);
   
   errorLast = e;
-  timeLast = timeNow;
+  PIDTimer = 0;
 
   return out;
 }
@@ -230,12 +266,22 @@ double PID(double e)
  * calculates needed angle for servos and transmit it to them
  */
 
-void angle2Servo(double a, double w)
+void angle2Servo(double a, double yz[2])
 {
-  double angle = min(a, MAX_GIMBAL_ANGLE / RAD_TO_DEG);
+  if (a == 0)
+  { // To protect against div by 0 errors
+    // Center Servos
+    servoY.writeMicroseconds(1500);
+    servoZ.writeMicroseconds(1500);
+    return;
+  }
   
-  double servoYRad = - tan(sin(w) * atan(angle)) / SERVO_TO_GIMBAL;
-  double servoZRad = tan(cos(w) * atan(angle)) / SERVO_TO_GIMBAL;
+  double angle = min(a, MAX_GIMBAL_ANGLE / RAD_TO_DEG);
+
+  double x = 1/tan(angle);
+  
+  double servoYRad = atan2(yz[2], x) / SERVO_TO_GIMBAL;
+  double servoZRad = atan2(yz[1], x) / SERVO_TO_GIMBAL;
 
   double servoYMicro = map(servoYRad, -PI/3, PI/3, 900, 2100);
   double servoZMicro = map(servoZRad, -PI/3, PI/3, 900, 2100);
@@ -250,34 +296,56 @@ void angle2Servo(double a, double w)
 void testGimbal()
 {
   // center gimbal
-  angle2Servo(0, 0);
+  double yz[2] = {0, 0};
+  
+  angle2Servo(0, yz);
 
   double wMax = PI * 2;
   double aMax = MAX_GIMBAL_ANGLE / RAD_TO_DEG;
   double w_to_a = aMax / wMax;
 
   // Spiral Outwards
-  for (w = 0; w < wMax; w += .01)
+  for (float w = 0; w < wMax; w += .01)
   {
-      angle2Servo(w * w_to_a, w);
-      delay(10);
+    yz[0] = cos(w);
+    yz[1] = sin(w);
+    angle2Servo(w * w_to_a, yz);
+    delay(10);
   }
 
   // One full rotation at max angle
-  for (w = 0; w < wMax; w += .01)
+  for (float w = 0; w < wMax; w += .01)
   {
-      angle2Servo(aMax, w);
-      delay(10);
+    yz[0] = cos(w);
+    yz[1] = sin(w);
+    angle2Servo(aMax, yz);
+    delay(10);
   }
 
   // Spiral Inwards
-  for (w = 0; w < wMax; w += .01)
+  for (float w = 0; w < wMax; w += .01)
   {
-      angle2Servo(aMax - (w * w_to_a), w);
-      delay(10);
+    yz[0] = cos(w);
+    yz[1] = sin(w);
+    angle2Servo(aMax - (w * w_to_a), yz);
+    delay(10);
   }
 
   // Re-Center gimbal
-  angle2Servo(0, 0);
+  angle2Servo(0, yz);
+}
+
+int LEDBlink(int LED, unsigned int dutyCycle, float ratio)
+{
+  
+  if (PROGRAM_TIME % (dutyCycle) <= (dutyCycle) * ratio)
+  { // If at time during cycle where LED should be on.
+    digitalWrite(LED, HIGH);
+    return 1;
+  } else
+  {
+    digitalWrite(LED, LOW);
+    return 0;
+  }
   
 }

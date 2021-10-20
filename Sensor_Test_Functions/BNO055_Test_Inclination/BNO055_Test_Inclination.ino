@@ -9,7 +9,7 @@
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
 int buzzerPin = 14;
-unsigned int loopTime = 5; // Millis per loop
+unsigned int loopTime = 100; // Millis per loop
 
 float yaw;
 float pitch;
@@ -74,7 +74,7 @@ void setup() {
 }
 
 void loop() {
-  //imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+  //imu::Vector<3> grav = bno.getVector(Adafruit_BNO055::VECTOR_);
   //imu::Vector<3> eul = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   imu::Quaternion quat = bno.getQuat();
   
@@ -89,14 +89,10 @@ void loop() {
 
   double q[] = {quat.w(), quat.x(), quat.y(), quat.z()};
   
-  // Inclination: angle from upwards x-axis
-  // we want this to be 0, Use PID to do so
-  i = acos(2 * (q[0]*q[0] + q[1]*q[1]) - 1);
-  
-  // angle of Z axis away from inertial ZY plane measured around rotated frame X axis
-  // needed to determine how servos will partition wanted angle.
+//  // angle of Z axis away from inertial ZY plane measured around rotated frame X axis
+//  // needed to determine how servos will partition wanted angle.
   w = atan2(2 * (q[0]*q[2] + q[3]*q[1]), 2 * (q[0]*q[3] - q[1]*q[2]));
-  
+//  
  
 
 //  yaw = atan2(2*(q[0]*q[3]+q[1]*q[2]),1-2*(q[2]*q[2]+q[3]*q[3]));
@@ -109,6 +105,25 @@ void loop() {
 //  Serial.print(pitch * RAD_TO_DEG);
 //  Serial.print("    roll: ");
 //  Serial.print(roll * RAD_TO_DEG);
+
+  
+
+  // Testing bno.getEvent, bno.get vector and how accurate the gravity vector is.
+
+  sensors_event_t orientationData , angVelocityData , linearAccelData, gravityData;
+  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+  bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
+  bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
+  bno.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY);
+
+  imu::Vector<3> eul = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+  imu::Vector<3> linAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+  imu::Vector<3> g = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
+
+  double grav[] = {g.x(), g.y(), g.z()};
+
+  i = acos(grav[0]/sqrt(grav[0] * grav[0] + grav[1] * grav[1] + grav[2] * grav[2]));
 
   Serial.print("Calculated from Raw: ");
   Serial.print("Inclination=");
@@ -125,19 +140,6 @@ void loop() {
   Serial.print(q[2]);
   Serial.print(", z=");
   Serial.println(q[3]);
-
-  // Testing bno.getEvent, bno.get vector and how accurate the gravity vector is.
-
-  sensors_event_t orientationData , angVelocityData , linearAccelData, gravityData;
-  bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-  bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-  bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
-  bno.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY);
-
-  imu::Vector<3> eul = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-  imu::Vector<3> linAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-  imu::Vector<3> g = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
 
   Serial.print("Raw Eul: ");
   Serial.print(", x=");
@@ -176,9 +178,7 @@ void loop() {
   printEvent(&linearAccelData);
   printEvent(&gravityData);
 
-  while (millis() - lastLoop < loopTime){}
-
-  lastLoop = millis();
+  delay(500);
 }
 
 void printEvent(sensors_event_t* event) {
