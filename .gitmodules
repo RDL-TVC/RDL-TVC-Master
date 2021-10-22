@@ -1,1 +1,7 @@
 
+[submodule "Libraries/Adafruit_BNO055"]
+	path = Libraries/Adafruit_BNO055
+	url = https://github.com/RDL-TVC/Adafruit_BNO055.git
+[submodule "Libraries/TeensyThreads"]
+	path = Libraries/TeensyThreads
+	url = https://github.com/RDL-TVC/TeensyThreads.git
