@@ -142,8 +142,8 @@ void setup() {
   tone(BUZZER, TONE_VICTORY, 250);
   delay(250);
 
-//  Serial.println("Starting Interrupt Pulse.");
-//  pulse.begin(BNO055ISR,10000);
+  Serial.println("Starting Interrupt Pulse.");
+  pulse.begin(BNO055ISR,10000);
   
 }
 
