@@ -21,11 +21,11 @@ float w; // Rad
 unsigned long lastLoop = 0; //Millis when the last loop was executed
 
 void setup() {
-//Test BNO055
+  //Test BNO055
   Serial.begin(9600);
   Serial.println("BNO055 Test");
   Serial.println("");
-  if(!bno.begin(bno.OPERATION_MODE_NDOF)) //bno.OPERATION_MODE_IMUPLUS   bno.OPERATION_MODE_NDOF
+  if(!bno.begin(bno.OPERATION_MODE_NDOF)) //bno.OPERATION_MODE_IMUPLUS
   {
     Serial.print("BNO055 failed to start");
     while(1);
@@ -33,6 +33,12 @@ void setup() {
   
   bno.setExtCrystalUse(true);
 
+  // Z Axis = X, Y Axis = Z, X Axis = Y
+  bno.setAxisRemap(0b00001001);
+
+  // Z Axis = Y, Y Axis = X, X Axis = Z
+  // bno.setAxisRemap(0b00010010);
+  
 //  pinMode(2,OUTPUT); //Pin 2 for BNO reset set as output
 
   uint8_t cal, gyro, accel, mag = 0;
@@ -62,6 +68,8 @@ void setup() {
     delay(1000);
   }
 
+ 
+
   tone(buzzerPin,500,500);
   delay(500);
   tone(buzzerPin,1000,1000);
@@ -74,23 +82,27 @@ void setup() {
 }
 
 void loop() {
-  //imu::Vector<3> grav = bno.getVector(Adafruit_BNO055::VECTOR_);
-  //imu::Vector<3> eul = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  imu::Quaternion quat = bno.getQuat();
- 
-
-//  yaw = atan2(2*(q[0]*q[3]+q[1]*q[2]),1-2*(q[2]*q[2]+q[3]*q[3]));
-//  pitch = asin(2*(q[0]*q[2]-q[3]*q[1]));
-//  roll = atan2(2*(q[0]*q[1]+q[2]*q[3]),1-2*(q[1]*q[1]+q[2]*q[2]));  
-//
-//  Serial.print("yaw: ");
-//  Serial.print(yaw * RAD_TO_DEG);
-//  Serial.print("    pitch: ");
-//  Serial.print(pitch * RAD_TO_DEG);
-//  Serial.print("    roll: ");
-//  Serial.print(roll * RAD_TO_DEG);
-
   
+  imu::Quaternion quat = bno.getQuat();
+  
+  /*
+   * 
+   * Using quaternion to euler XZX conversion.
+   * Get inclination through the 2nd rotation
+   * Get orientation of servos from 3rd rotation (Roll around actual centerline of rocket)
+   * implementation as seen in MATLAB qparts2feul.m
+   * 
+   */
+
+  double q[] = {quat.w(), quat.x(), quat.y(), quat.z()};
+
+  // Inclination: angle from upwards x-axis
+  // we want this to be 0, Use PID to do so
+  i = acos(2 * (q[0]*q[0] + q[1]*q[1]) - 1); // Rad
+  
+  // angle of Z axis away from inertial ZY plane measured around rotated frame X axis
+  // needed to determine how servos will partition wanted angle.
+  w = atan2(2 * (q[0]*q[2] + q[3]*q[1]), 2 * (q[0]*q[3] - q[1]*q[2]));
 
   // Testing bno.getEvent, bno.get vector and how accurate the gravity vector is.
 
@@ -105,11 +117,9 @@ void loop() {
   imu::Vector<3> linAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
   imu::Vector<3> g = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
 
-  double grav[] = {g.x(), g.y(), g.z()};
+  // double grav[] = {g.x(), g.y(), g.z()};
 
-  i = acos(grav[0]/sqrt(grav[0] * grav[0] + grav[1] * grav[1] + grav[2] * grav[2]));
-
-  // Implement Roll test calculated from grav vector
+  // i = acos(grav[0]/sqrt(grav[0] * grav[0] + grav[1] * grav[1] + grav[2] * grav[2]));
 
   Serial.print("Calculated from Raw: ");
   Serial.print("Inclination=");
@@ -163,7 +173,7 @@ void loop() {
   printEvent(&angVelocityData);
   printEvent(&linearAccelData);
   printEvent(&gravityData);
-
+  
   while ((millis() - lastLoop) < loopTime);
   lastLoop = millis();
 }
