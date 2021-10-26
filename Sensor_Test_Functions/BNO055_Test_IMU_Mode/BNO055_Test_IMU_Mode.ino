@@ -90,7 +90,7 @@ void loop() {
 
   // Inclination: angle from upwards x-axis
   // we want this to be 0, Use PID to do so
-  *i = acos(2 * (q[0]*q[0] + q[1]*q[1]) - 1); // Rad
+  i = acos(2 * (q[0]*q[0] + q[1]*q[1]) - 1); // Rad
   
   // angle of Z axis away from inertial ZY plane measured around rotated frame X axis
   // needed to determine how servos will partition wanted angle.

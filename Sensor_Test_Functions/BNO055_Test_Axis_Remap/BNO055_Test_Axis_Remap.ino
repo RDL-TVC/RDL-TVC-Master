@@ -25,19 +25,13 @@ void setup() {
   Serial.begin(9600);
   Serial.println("BNO055 Test");
   Serial.println("");
-  if(!bno.begin(bno.OPERATION_MODE_NDOF)) //bno.OPERATION_MODE_IMUPLUS
+  if(!bno.begin(bno.OPERATION_MODE_NDOF, B00001001)) //bno.OPERATION_MODE_IMUPLUS
   {
     Serial.print("BNO055 failed to start");
     while(1);
   }
   
   bno.setExtCrystalUse(true);
-
-  // Z Axis = X, Y Axis = Z, X Axis = Y
-  bno.setAxisRemap(0b00001001);
-
-  // Z Axis = Y, Y Axis = X, X Axis = Z
-  // bno.setAxisRemap(0b00010010);
   
 //  pinMode(2,OUTPUT); //Pin 2 for BNO reset set as output
 
@@ -87,7 +81,7 @@ void loop() {
   
   /*
    * 
-   * Using quaternion to euler XZX conversion.
+   * Using quaternion to euler ZXZ conversion.
    * Get inclination through the 2nd rotation
    * Get orientation of servos from 3rd rotation (Roll around actual centerline of rocket)
    * implementation as seen in MATLAB qparts2feul.m
@@ -98,11 +92,11 @@ void loop() {
 
   // Inclination: angle from upwards x-axis
   // we want this to be 0, Use PID to do so
-  i = acos(2 * (q[0]*q[0] + q[1]*q[1]) - 1); // Rad
+  i = acos(2 * (q[0]*q[0] + q[3]*q[3]) - 1); // Rad
   
-  // angle of Z axis away from inertial ZY plane measured around rotated frame X axis
+  // angle of Z axis away from inertial XY plane measured around rotated frame X axis
   // needed to determine how servos will partition wanted angle.
-  w = atan2(2 * (q[0]*q[2] + q[3]*q[1]), 2 * (q[0]*q[3] - q[1]*q[2]));
+  w = - atan2(2 * (q[0]*q[3] + q[1]*q[2]), 2 * (q[0]*q[2] - q[1]*q[3]));
 
   // Testing bno.getEvent, bno.get vector and how accurate the gravity vector is.
 
