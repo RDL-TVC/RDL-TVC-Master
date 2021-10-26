@@ -14,9 +14,9 @@ const int SERVO_PIN_YAW = 1;
 
 const int BUZZER = 4;
 
-const int TONE_SUCCESS = 523; // In Hz, Currently C5
-const int TONE_FAILURE = 261; // In Hz, currently C4
-const int TONE_VICTORY = 1046; // In Hz, Currently C6
+const int TONE_SUCCESS = 4000; // In Hz
+const int TONE_FAILURE = 3000; // In Hz
+const int TONE_VICTORY = 5000; // In Hz
 
 const int CHUTE_1_PIN = 2;
 const int CHUTE_2_PIN = 3;
@@ -79,6 +79,7 @@ int errorCycle = 0;
 elapsedMillis PROGRAM_TIME = 0; // Time since start of program do not reset
 elapsedMillis armTimer = 0; // Elapsed time while arming buttons are held.
 
+elapsedMillis beepTimer = 0; // Timer used to facilitate buzzer beeps
 elapsedMillis chuteChargeTimer = 0; // Time since last chute charge was activated
 elapsedMillis freefallTimer = 0; // time since free fall started
 
@@ -124,10 +125,10 @@ void setup()
     Serial.println("Initialization failed");
     tone(BUZZER,TONE_FAILURE);
     digitalWrite(LED_RED, HIGH);
-    while(1){}
+    while(1);
   }
 
-  // Sensors Initialized. Celebrate!
+  // Sensors Initialized. Celebrate! :D
   digitalWrite(LED_GREEN, HIGH);
   tone(BUZZER, TONE_SUCCESS, 500);
   delay(500);
@@ -153,8 +154,10 @@ void loop()
       { //if the problem continues for specified number of cycles in a row, proceed to correction
         tone(BUZZER, TONE_FAILURE);
         
-        //TODO: lock gimbal
-  
+        //lock gimbal
+        servoYaw.write(90);
+        servoPitch.write(90);
+        
         //TODO: save to SD card
 
         // Rocket no longer controlable, deploy chute to minimize damage
@@ -250,6 +253,10 @@ int groundidle()
   LEDBlink(LED_RED, DUTY_CYCLE, LED_TIME_ON);
 
   // Add periodic buzzer beep
+  if (beepTimer >= DUTY_CYCLE) {
+  beepTimer = 0;
+  tone(BUZZER, 4000, 500);
+  }
 
   // Update sensor data
   BMP388Status = getAlt(&alt, &apogee);
@@ -290,18 +297,23 @@ int boost()
   // If acceleration is in roughly same direction as gravity, motor has burned out. grav dot accel > 0
   double accelDown = gravVector[0] * accelVector[0] + gravVector[1] * accelVector[1] + gravVector[2] * accelVector[2];
 
+  //TODO: check for consistent measurements across .5 - 1s
   if (accelDown > 0)
   { // No longer acelerating upwards head to burnout
     Serial.printf("Burnout detected: Boost-->Burnout\n");
     nextState = 3;
     
     // Center Servos
+    servoYaw.write(90);
+    servoPitch.write(90);
   } else if (BMP388Status == 2)
   { // Rocket Started Falling, missed burnout head to freefall.
     Serial.printf("Apogee detected: Boost-->Freefall\n");
     nextState = 4;
 
     // Center Servos
+    servoYaw.write(90);
+    servoPitch.write(90);
   }
   
   return nextState;

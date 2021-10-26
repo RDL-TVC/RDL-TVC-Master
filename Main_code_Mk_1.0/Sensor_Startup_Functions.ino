@@ -105,6 +105,11 @@ int bnoInit()
   }
 
   Serial.println("BNO055 Initialized. Now Calibrating.");
+
+  //Plays low tone to high tone to indicate start of calibration
+  tone(BUZZER, 3000, 500);
+  delay(500);
+  tone(BUZZER, 4000, 500);
   
   delay(1000);
   bno.setExtCrystalUse(true);
@@ -136,6 +141,7 @@ int bnoInit()
   }
 
   Serial.println("Calibration of BNO055 finished.");
+  tone(BUZZER, TONE_SUCCESS, 1000);
   
   return 1;
 }
@@ -194,8 +200,10 @@ int servoInit()
   servoPitch.attach(SERVO_PIN_PITCH);
   servoYaw.attach(SERVO_PIN_YAW);
 
-  // TODO: Center Servos
-
+  // Center Servos
+    servoYaw.write(90);
+    servoPitch.write(90);
+    
   // TODO: Check if servos are present.
 
   return 1;
