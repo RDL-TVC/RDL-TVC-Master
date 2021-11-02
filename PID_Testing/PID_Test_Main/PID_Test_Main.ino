@@ -61,7 +61,7 @@ void setup(void)
   }*/
   
   /* Initialise the sensor */
-  if (!bno.begin())
+  if (!bno.begin(bno.OPERATION_MODE_NDOF, B00001001))
   {
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
