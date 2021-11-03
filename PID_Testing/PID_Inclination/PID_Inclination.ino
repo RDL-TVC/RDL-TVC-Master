@@ -18,8 +18,8 @@
 #define SERVO_TO_GIMBAL 0.43; // Rad/Rad  (or deg/deg) to convert wanted gimble angle to servo angle with inverse of this.
 
 // Defining Pins for external devices
-const int SERVO_PIN_Y = 0; // pin for servo that rotates gimble about y axis
-const int SERVO_PIN_Z = 1; // pin for servo that rotates gimble about z axis
+const int SERVO_PIN_X = 0; // pin for servo that rotates gimble about y axis
+const int SERVO_PIN_Y = 1; // pin for servo that rotates gimble about z axis
 
 const int MAX_GIMBAL_ANGLE = 10; // Degrees
 
@@ -47,12 +47,13 @@ const double D = 0;
 // Defining Variables that carry from cycle to cycle
 double errorLast = 0; // Rad
 double errorSum = 0; // Rad * Sec
+double lastServoWrite[2] = {1500, 1500};
+
 
 double targetInclination = 0; // Target Inclination for PID loop in RAD
 // double targetHeading = 0; // Target absolute heading for PID loop (not implemented)
 
 // Used in Loop to be updated
-double a;
 
 bool dutyCyclePrintFlag = false;
 
@@ -63,14 +64,14 @@ elapsedMillis PIDTimer = 0;
 // Defining Sensor and servo objects
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
+Servo servoX;
 Servo servoY;
-Servo servoZ;
 
 void setup(void)
 {
   // Initialise Servos
+  servoX.attach(SERVO_PIN_X);
   servoY.attach(SERVO_PIN_Y);
-  servoZ.attach(SERVO_PIN_Z);
   
   // Set Pin mode for status LED
   pinMode(LED_GREEN,OUTPUT);
@@ -81,7 +82,7 @@ void setup(void)
 
   Serial.print("Initializing BNO055...");
   
-  if (!bno.begin())
+  if (!bno.begin(bno.OPERATION_MODE_NDOF, B00001001))
   { // BNO055 was not able to initialize
     Serial.println("BNO055 failed to initialize.");
     tone(PIEZO,TONE_FAILURE);
@@ -128,10 +129,10 @@ void setup(void)
   testGimbal();
 
   // Ready to Arm
-  noTone(PIEZO);
-  delay (500);
-  tone(PIEZO,TONE_SUCCESS, 500);
-  delay (1000);
+  // noTone(PIEZO);
+  // delay (500);
+  // tone(PIEZO,TONE_SUCCESS, 500);
+  // delay (1000);
 
   armTimer = 0;
   bool armTimerPrintFlag = false;
@@ -195,19 +196,35 @@ void loop(void)
 {
 
   double i;
-  double yz[2];
+  double xy[2];
   
-  getOrient(&i, yz);
+  getOrient(&i, xy);
 
   double a = PID(i - targetInclination);
 
-  angle2Servo(a, yz);
+  angle2Servo(a, xy);
+  
+  Serial.print("Inclination: ");
+  Serial.print(i);
+  Serial.print("PID Out: ");
+  Serial.print(a);
+  Serial.print("X Comp: ");
+  Serial.print(xy[0]);
+  Serial.print("Y Comp: ");
+  Serial.println(xy[1]);
 
   if (LEDBlink(LED_GREEN, DUTY_CYCLE, LED_TIME_ON))
   {
     if (!dutyCyclePrintFlag)
     {
-      Serial.printf("Inclination: %d, PID Angle Out: %d, Y Comp: %f, Z Comp: %f", i, a, yz[0], yz[1]);
+      Serial.print("Inclination: ");
+      Serial.print(i);
+      Serial.print("PID Out: ");
+      Serial.print(a);
+      Serial.print("X Comp: ");
+      Serial.print(xy[0]);
+      Serial.print("Y Comp: ");
+      Serial.println(xy[1]);
       dutyCyclePrintFlag = true;
     }
   } else 
@@ -224,22 +241,32 @@ void loop(void)
 * Get orientation of servos from 3rd rotation
 * implementation as seen in MATLAB qparts2feul.m
 */
-void getOrient(double *i, double yz[2])
+void getOrient(double *i, double xy[2])
 {
   imu::Vector<3> g = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
+  imu::Quaternion quat = bno.getQuat();
 
   double grav[3] = {g.x(), g.y(), g.z()};
+  double q[] = {quat.w(), quat.x(), quat.y(), quat.z()};
 
   // Inclination: angle from upwards x-axis
   // we want this to be 0, Use PID to do so
-  *i = acos(grav[0]/sqrt(grav[0] * grav[0] + grav[1] * grav[1] + grav[2] * grav[2]));
+  *i = acos(2 * (q[0]*q[0] + q[3]*q[3]) - 1);
 
-  // other code relies on yz being a unit vector.
+  // other code relies on xy being a unit vector.
 
-  double gyz = sqrt(grav[1]*grav[1] + grav[2]*grav[2]);
+  double gxy = sqrt(grav[0]*grav[0] + grav[1]*grav[1]);
+  if (gxy > 0)
+  {
+    xy[0] = grav[0]/gxy;
+    xy[1] = grav[1]/gxy;
+  }
+  else 
+  {
+    xy[0] = 0;
+    xy[1] = 0;
+  }
 
-  yz[0] = grav[1]/gyz;
-  yz[1] = grav[2]/gyz;
 }
 
 /*
@@ -253,7 +280,7 @@ double PID(double e)
   
   errorSum += e * dt / 1000;
   
-  double out = P * e + I * errorSum + ((e - errorLast) * 1000 / dt);
+  double out = P * e; // + I * errorSum + ((e - errorLast) * 1000 / dt);
   
   errorLast = e;
   PIDTimer = 0;
@@ -266,29 +293,51 @@ double PID(double e)
  * calculates needed angle for servos and transmit it to them
  */
 
-void angle2Servo(double a, double yz[2])
+void angle2Servo(double a, double xy[2])
 {
   if (a == 0)
   { // To protect against div by 0 errors
     // Center Servos
+    servoX.writeMicroseconds(1500);
     servoY.writeMicroseconds(1500);
-    servoZ.writeMicroseconds(1500);
     return;
   }
   
   double angle = min(a, MAX_GIMBAL_ANGLE / RAD_TO_DEG);
 
-  double x = 1/tan(angle);
+  double z = 1/tan(angle);
   
-  double servoYRad = atan2(yz[2], x) / SERVO_TO_GIMBAL;
-  double servoZRad = atan2(yz[1], x) / SERVO_TO_GIMBAL;
+  double servoXRad = atan2(xy[0], z) / SERVO_TO_GIMBAL;
+  double servoYRad = atan2(xy[1], z) / SERVO_TO_GIMBAL;
 
+  double servoXMicro = map(servoXRad, -PI/3, PI/3, 900, 2100);
   double servoYMicro = map(servoYRad, -PI/3, PI/3, 900, 2100);
-  double servoZMicro = map(servoZRad, -PI/3, PI/3, 900, 2100);
 
+  if (abs(servoXMicro - lastServoWrite[0]) > 100)
+  {
+    servoXMicro = lastServoWrite[0];
+  }
+  if (abs(servoYMicro - lastServoWrite[1]) > 100)
+  {
+    servoYMicro = lastServoWrite[1];
+  }
+
+  Serial.print("ServoXMicro: ");
+  Serial.print(servoXMicro);
+  Serial.print("ServoYMicro: ");
+  Serial.print(servoYMicro);
+  Serial.print("Angle: ");
+  Serial.print(angle);
+  Serial.print("X Comp: ");
+  Serial.print(xy[0]);
+  Serial.print("Y Comp: ");
+  Serial.println(xy[1]);
+  
+  servoX.writeMicroseconds(servoXMicro);
   servoY.writeMicroseconds(servoYMicro);
-  servoZ.writeMicroseconds(servoZMicro);
 
+  lastServoWrite[0] = servoXMicro;
+  lastServoWrite[1] = servoYMicro;
 }
 /*
  * Test routine to make sure gimbal is functioning within range
@@ -296,9 +345,9 @@ void angle2Servo(double a, double yz[2])
 void testGimbal()
 {
   // center gimbal
-  double yz[2] = {0, 0};
+  double xy[2] = {0, 0};
   
-  angle2Servo(0, yz);
+  angle2Servo(0, xy);
 
   double wMax = PI * 2;
   double aMax = MAX_GIMBAL_ANGLE / RAD_TO_DEG;
@@ -307,32 +356,32 @@ void testGimbal()
   // Spiral Outwards
   for (float w = 0; w < wMax; w += .01)
   {
-    yz[0] = cos(w);
-    yz[1] = sin(w);
-    angle2Servo(w * w_to_a, yz);
+    xy[0] = cos(w);
+    xy[1] = sin(w);
+    angle2Servo(w * w_to_a, xy);
     delay(10);
   }
 
   // One full rotation at max angle
   for (float w = 0; w < wMax; w += .01)
   {
-    yz[0] = cos(w);
-    yz[1] = sin(w);
-    angle2Servo(aMax, yz);
+    xy[0] = cos(w);
+    xy[1] = sin(w);
+    angle2Servo(aMax, xy);
     delay(10);
   }
 
   // Spiral Inwards
   for (float w = 0; w < wMax; w += .01)
   {
-    yz[0] = cos(w);
-    yz[1] = sin(w);
-    angle2Servo(aMax - (w * w_to_a), yz);
+    xy[0] = cos(w);
+    xy[1] = sin(w);
+    angle2Servo(aMax - (w * w_to_a), xy);
     delay(10);
   }
 
   // Re-Center gimbal
-  angle2Servo(0, yz);
+  angle2Servo(0, xy);
 }
 
 int LEDBlink(int LED, unsigned int dutyCycle, float ratio)
