@@ -47,10 +47,14 @@ File added by: Evan Grilley
 // Wiz820+SD board: pin 4
 // Teensy 2.0: pin 0
 // Teensy++ 2.0: pin 20
-const int chipSelect = 11;
-//const int chipSelect = BUILTIN_SDCARD;
+//const int chipSelect = 11;
+const int chipSelect = BUILTIN_SDCARD;
 int currentMillis;
 int oldMillis;
+int loops;
+
+File dataFile;
+String dataString;
 
 void setup()
 {
@@ -73,30 +77,32 @@ void setup()
     return;
   }
   Serial.println("card initialized.");
+
+  dataFile = SD.open("datalog.txt", O_RDWR | O_CREAT | O_TRUNC);
+
+  // make a string for assembling the data to log:
+  dataString = "";
+
+  // read three sensors and append to the string:
+  for (int analogPin = 0; analogPin < 50; analogPin++) {
+    //int sensor = analogRead(analogPin);
+    dataString += String(analogPin);
+    if (analogPin < 50) {
+      dataString += ","; 
+    }
+  }
 }
 
 void loop()
 {
-  // make a string for assembling the data to log:
-  String dataString = "";
-
-  // read three sensors and append to the string:
-  for (int analogPin = 0; analogPin < 5000; analogPin++) {
-    //int sensor = analogRead(analogPin);
-    dataString += String(analogPin);
-    if (analogPin < 5000) {
-      dataString += ","; 
-    }
-  }
+  loops++;
 
   oldMillis = millis();
   // open the file.
-  File dataFile = SD.open("datalog.txt", FILE_WRITE);
-
+  
   // if the file is available, write to it:
   if (SD.exists("datalog.txt")) {
     dataFile.println(dataString);
-    dataFile.close();
     // print to the serial port too:
     //Serial.println(dataString);
   }  
@@ -106,4 +112,10 @@ void loop()
   } 
   currentMillis = millis();
   Serial.println(currentMillis-oldMillis);
+
+  if (loops > 500) {
+    dataFile.close();
+    Serial.println("done!");
+    while(true);
+  }
 }
