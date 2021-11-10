@@ -18,8 +18,8 @@
 #define SERVO_TO_GIMBAL 0.43; // Rad/Rad  (or deg/deg) to convert wanted gimble angle to servo angle with inverse of this.
 
 // Defining Pins for external devices
-const int SERVO_PIN_X = 0; // pin for servo that rotates gimble about y axis
-const int SERVO_PIN_Y = 1; // pin for servo that rotates gimble about z axis
+const int SERVO_PIN_X = 1; // pin for servo that rotates gimble about y axis
+const int SERVO_PIN_Y = 0; // pin for servo that rotates gimble about z axis
 
 const int MAX_GIMBAL_ANGLE = 10; // Degrees
 
@@ -31,7 +31,7 @@ const int SECONDS_TO_ARM = 10; // Seconds
 const int LED_GREEN = 7;
 const int LED_RED = 8;
 
-const int DUTY_CYCLE = 1000; // Length of total LED duty cycle in millis
+const int DUTY_CYCLE = 100; // Length of total LED duty cycle in millis
 const float LED_TIME_ON = .05; // LED will be on for this fraction of duty cycle
 
 const int PIEZO = 4;
@@ -40,9 +40,9 @@ const int TONE_SUCCESS = 523; // In Hz, Currently C5
 const int TONE_FAILURE = 261; // In Hz, currently C4
 const int TONE_VICTORY = 1046; // In Hz, Currently C6
 
-const double P = 0.1;
+const double P = 0; // 0.1;
 const double I = 0; // given that inclination is always positive, this term will only accumulate (should not use for this controller)
-const double D = 0;
+const double D = 50;
 
 // Defining Variables that carry from cycle to cycle
 double errorLast = 0; // Rad
@@ -203,7 +203,7 @@ void loop(void)
   double a = PID(i - targetInclination);
 
   angle2Servo(a, xy);
-  
+  /*
   Serial.print("Inclination: ");
   Serial.print(i);
   Serial.print("PID Out: ");
@@ -212,7 +212,7 @@ void loop(void)
   Serial.print(xy[0]);
   Serial.print("Y Comp: ");
   Serial.println(xy[1]);
-
+  */
   if (LEDBlink(LED_GREEN, DUTY_CYCLE, LED_TIME_ON))
   {
     if (!dutyCyclePrintFlag)
@@ -253,19 +253,24 @@ void getOrient(double *i, double xy[2])
   // we want this to be 0, Use PID to do so
   *i = acos(2 * (q[0]*q[0] + q[3]*q[3]) - 1);
 
-  // other code relies on xy being a unit vector.
+  double w = -atan2(2 * (q[0] * q[2] - q[1] * q[3]), 2 * (q[0] * q[1] + q[2] * q[3]));
 
-  double gxy = sqrt(grav[0]*grav[0] + grav[1]*grav[1]);
-  if (gxy > 0)
-  {
-    xy[0] = grav[0]/gxy;
-    xy[1] = grav[1]/gxy;
-  }
-  else 
-  {
-    xy[0] = 0;
-    xy[1] = 0;
-  }
+  xy[0] = -sin(w);
+  xy[1] = cos(w);
+  
+//  // other code relies on xy being a unit vector.
+//
+//  double gxy = sqrt(grav[0]*grav[0] + grav[1]*grav[1]);
+//  if (gxy > 0)
+//  {
+//    xy[0] = grav[0]/gxy;
+//    xy[1] = grav[1]/gxy;
+//  }
+//  else 
+//  {
+//    xy[0] = 0;
+//    xy[1] = 0;
+//  }
 
 }
 
@@ -280,7 +285,7 @@ double PID(double e)
   
   errorSum += e * dt / 1000;
   
-  double out = P * e; // + I * errorSum + ((e - errorLast) * 1000 / dt);
+  double out = P * e + D * ((e - errorLast)/dt);
   
   errorLast = e;
   PIDTimer = 0;
@@ -321,7 +326,7 @@ void angle2Servo(double a, double xy[2])
   {
     servoYMicro = lastServoWrite[1];
   }
-
+/*
   Serial.print("ServoXMicro: ");
   Serial.print(servoXMicro);
   Serial.print("ServoYMicro: ");
@@ -332,7 +337,7 @@ void angle2Servo(double a, double xy[2])
   Serial.print(xy[0]);
   Serial.print("Y Comp: ");
   Serial.println(xy[1]);
-  
+*/
   servoX.writeMicroseconds(servoXMicro);
   servoY.writeMicroseconds(servoYMicro);
 
@@ -359,7 +364,7 @@ void testGimbal()
     xy[0] = cos(w);
     xy[1] = sin(w);
     angle2Servo(w * w_to_a, xy);
-    delay(10);
+    delay(1);
   }
 
   // One full rotation at max angle
@@ -368,7 +373,7 @@ void testGimbal()
     xy[0] = cos(w);
     xy[1] = sin(w);
     angle2Servo(aMax, xy);
-    delay(10);
+    delay(1);
   }
 
   // Spiral Inwards
@@ -377,7 +382,7 @@ void testGimbal()
     xy[0] = cos(w);
     xy[1] = sin(w);
     angle2Servo(aMax - (w * w_to_a), xy);
-    delay(10);
+    delay(1);
   }
 
   // Re-Center gimbal

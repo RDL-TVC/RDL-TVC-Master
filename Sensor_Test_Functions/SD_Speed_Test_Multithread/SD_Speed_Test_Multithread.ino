@@ -22,11 +22,13 @@ const int PRECISION = 6; // Number of Decimal places recorded
 const int MAGNITUDE = 4; // Order of magnitude of maximum number to be recorded.
 const int INT_BUFF_LEN = MAGNITUDE + PRECISION + 3; // + 3 for decimal point, - sign, & null delimiter
 const int MAX_DATA_VALUE = pow(10, MAGNITUDE) - 1;
-const int MAX_TIME_VALUE = 3600000; // hour of runtime in millis
+const int MAX_TIME_VALUE = 10000; // hour of runtime in millis
 
-const int LOG_FILE_SIZE = (INT_BUFF_LEN * 14 + 2) * MAX_TIME_VALUE / 10; // Enough bytes for hour of run time at 100Hz
+const int LOG_FILE_SIZE = 100 * 100 * MAX_TIME_VALUE; // Enough bytes for hour of run time at 100Hz
 const char LOG_FILENAME[12] = "datalog.csv";
 const int RING_BUF_CAPACITY = (INT_BUFF_LEN * 14 + 2)*512; // Enough bytes to hold over 1s of data at 100Hz
+
+int logTime;
 
 SdFs sd;
 FsFile file;
@@ -91,52 +93,8 @@ void setup() {
 
   Serial.println("Ringbuffer and Logfile initialized.");
   
-  Serial.print("Initializing BNO055...");
-  
-  if (!bno.begin())
-  { // BNO055 was not able to initialize
-    Serial.println("BNO055 failed to initialize.");
-    tone(BUZZER,TONE_FAILURE);
-    digitalWrite(LED_RED, HIGH);
-    while(1);
-  }
-
-  Serial.println("BNO055 Initialized. Now Calibrating.");
-  
-  delay(1000);
-  bno.setExtCrystalUse(true);
-
-  // Calibrating BNO055. Do not Disturb!
-  uint8_t cal, gyro, accel, mag = 0;
-  bno.getCalibration(&cal, &gyro, &accel, &mag);
-
-  Serial.print("Calibrating BNO055  ");
-  Serial.print(cal);
-  Serial.print("  ");
-  Serial.print(gyro);
-  Serial.print("  ");
-  Serial.print(accel);
-  Serial.print("  ");
-  Serial.println(mag);
-
-  while (cal != 3)
-  {
-    bno.getCalibration(&cal, &gyro, &accel, &mag);
-    Serial.print("Calibrating BNO055  ");
-    Serial.print(cal);
-    Serial.print("  ");
-    Serial.print(gyro);
-    Serial.print("  ");
-    Serial.print(accel);
-    Serial.print("  ");
-    Serial.println(mag);
-    delay(1000);
-  }
-
-  Serial.println("Calibration of BNO055 finished.");
-
   // Add Header to file
-  datalogInit();
+  // datalogInit();
 
   // Sensors Initialized. Celebrate!
   digitalWrite(LED_GREEN, HIGH);
@@ -146,8 +104,8 @@ void setup() {
   delay(250);
 
   Serial.println("Starting BNO055 Thread: ");
-  threads.addThread(BNO055Thread);
-  
+  // threads.addThread(BNO055Thread);
+  pulse.begin(BNO055Thread, 10000);
 }
 
 void loop() 
@@ -179,6 +137,7 @@ void loop()
     Serial.println("Times Up - quitting.");
     file.truncate();
     file.close();
+    while (1){}
   }
   
 
@@ -187,76 +146,17 @@ void loop()
 void BNO055Thread()
 {
 
-  while(1)
-  {
-    
-    uint32_t logTime = millis();
-    
-    // Get Quaternion data from BNO055.
-    imu::Quaternion quat = bno.getQuat();
-    // Get Linear Acceleration (No Gravity) data [m/s^2].
-    imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-    // Get Gyroscope data [rad/s].
-    imu::Vector<3> gyro = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-    // Get Diretion of Gravitational Vector [m/s^2].
-    imu::Vector<3> grav = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
-  
-    char databuf[14 * INT_BUFF_LEN + 2]; // Space for 12 * 14 characters + 1 "," and "\n\0" at end
-    char dtostrbuf[INT_BUFF_LEN]; // space for "-0000.000000\0"
-  
-    sprintf(databuf, "%d", min((int)logTime, MAX_TIME_VALUE));
-    
-    dtostrf(min(quat.w(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcpy(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    dtostrf(min(quat.x(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    dtostrf(min(quat.y(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    dtostrf(min(quat.z(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-  
-    dtostrf(min(accel.x(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    dtostrf(min(accel.y(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    dtostrf(min(accel.z(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-  
-    dtostrf(min(gyro.x(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    dtostrf(min(gyro.y(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    dtostrf(min(gyro.z(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    
-    dtostrf(min(grav.x(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    dtostrf(min(grav.y(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, ",");
-    dtostrf(min(grav.z(), MAX_DATA_VALUE), 0, PRECISION, dtostrbuf);
-    strcat(databuf, dtostrbuf);
-    strcat(databuf, "\n");
-
+  //while(1)
+  //{
+    char str[100];
+    sprintf(str, "0001,0002,0003,0004,0005,0006,0007,0008,0009,0010,0011,0012,00%d\n", int(millis() - logTime));
+    logTime = millis();
     // Not sure if Lock and unlock are needed but put in just in case. If it works well with locking and unlocking, keep them.
-    rbLock.lock();
-    rb.memcpyIn(databuf, 14 * INT_BUFF_LEN + 2);
-    rbLock.unlock();
+    rb.memcpyIn(str, 65);
+    
+    //while(millis() - logTime < 1);
 
-    while(millis() - logTime < 10);
-
-  }
+  //}
   
 }
 
@@ -269,7 +169,7 @@ int datalogInit()
   strcpy(header, "(double) Quaternion W,(double) Quaternion X,(double) Quaternion Y,(double) Quaternion Z,");
   strcat(header, "(double) Linear Acceleration X [m/s^2],(double) Linear Acceleration Y [m/s^2],(double) Linear Acceleration Z [m/s^2],");
   strcat(header, "(double) Angular Velocity X [rad/s],(double) Angular Velocity Y [rad/s],(double) Angular Velocity Z [rad/s],");
-  strcat(header, "(double) Gravitational Vector X [m/s^2],(double) Gravitational Vector Y [m/s^2],(double) Gravitational Vector Z [m/s^2]\n");
+  strcat(header, "(double) Gravitational Vector X [m/s^2],(double) Gravitational Vector Y [m/s^2],(double) Gravitational Vector Z [m/s^2];");
 
   rb.memcpyIn(header, 512);
   
