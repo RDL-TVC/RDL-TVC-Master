@@ -5,6 +5,8 @@
  * Manual Change Log (Complementary to git)
  * 10/13/2021 : v0.1.0 : First Test version created, needs to be tested
  * 10/19/2021 : v0.2.0 : Still Needs to be tested, however based on data recieved from BNO_Test_Inclination, code has been modified.
+ * 11/09/2021 : v0.3.0 : Tested dry run. Gives expected result, however needs to be tested with thrust applied.
+ * 11/13/2021 : v0.3.1 : Reformated into seperate functions. Ready to test combined Interrupt based PID and datalogging.
  */
 
 
@@ -13,9 +15,15 @@
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 #include <Servo.h>
+#include <SD.h>
+#include <SdFat.h>
+#include <RingBuf.h>
 
 #define RAD_TO_DEG 57.295779513082320876798154814105
 #define SERVO_TO_GIMBAL 0.43; // Rad/Rad  (or deg/deg) to convert wanted gimble angle to servo angle with inverse of this.
+
+// Use Teensy SDIO
+#define SD_CONFIG  SdioConfig(FIFO_SDIO)
 
 // Defining Pins for external devices
 const int SERVO_PIN_X = 1; // pin for servo that rotates gimble about y axis
@@ -34,106 +42,55 @@ const int LED_RED = 8;
 const int DUTY_CYCLE = 100; // Length of total LED duty cycle in millis
 const float LED_TIME_ON = .05; // LED will be on for this fraction of duty cycle
 
-const int PIEZO = 4;
-
-const int TONE_SUCCESS = 523; // In Hz, Currently C5
-const int TONE_FAILURE = 261; // In Hz, currently C4
-const int TONE_VICTORY = 1046; // In Hz, Currently C6
-
-const double P = 0; // 0.1;
+const double P = 0.1; // 0.1;
 const double I = 0; // given that inclination is always positive, this term will only accumulate (should not use for this controller)
 const double D = 50;
 
+const char LOG_FILENAME[12] = "datalog.csv";
+const unsigned long MAX_TIME = 1000 * 3600;
+const unsigned long LOG_FILE_SIZE = 72*MAX_TIME / 10 + 153 + 20;
+const int RING_BUF_CAPACITY = 72*200;
+
 // Defining Variables that carry from cycle to cycle
-double errorLast = 0; // Rad
-double errorSum = 0; // Rad * Sec
-double lastServoWrite[2] = {1500, 1500};
+volatile double errorLast = 0; // Rad
+volatile unsigned long timeLast = 0;
 
+volatile int lastServoWrite[2] = {1500, 1500};
 
-double targetInclination = 0; // Target Inclination for PID loop in RAD
+const double targetInclination = 0; // Target Inclination for PID loop in RAD
 // double targetHeading = 0; // Target absolute heading for PID loop (not implemented)
+
+size_t maxUsed; // used to understand buffer overrun
 
 // Used in Loop to be updated
 
 bool dutyCyclePrintFlag = false;
 
-elapsedMillis PROGRAM_TIME = 0;
 elapsedMillis armTimer = 0;
-elapsedMillis PIDTimer = 0;
 
 // Defining Sensor and servo objects
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
-Servo servoX;
+Servo servoX; // TODO: Test if these need to be volatile
 Servo servoY;
+
+SdFs sd;
+FsFile file;
+
+RingBuf<FsFile, RING_BUF_CAPACITY> rb;
+
+const int SD_CARD = BUILTIN_SDCARD;
+
+IntervalTimer pulse;
 
 void setup(void)
 {
-  // Initialise Servos
-  servoX.attach(SERVO_PIN_X);
-  servoY.attach(SERVO_PIN_Y);
-  
-  // Set Pin mode for status LED
-  pinMode(LED_GREEN,OUTPUT);
-  pinMode(LED_RED,OUTPUT);
 
-  // Connect to Serial
-  Serial.begin(9600);
-
-  Serial.print("Initializing BNO055...");
-  
-  if (!bno.begin(bno.OPERATION_MODE_NDOF, B00001001))
-  { // BNO055 was not able to initialize
-    Serial.println("BNO055 failed to initialize.");
-    tone(PIEZO,TONE_FAILURE);
-    digitalWrite(LED_RED, HIGH);
+  if (!(IOInit() & logInit() & BNOInit() & servoInit()))
+  { // Something failed to intialize
     while(1);
   }
-
-  Serial.println("BNO055 Initialized. Now Calibrating.");
-
-  delay(1000);
-  bno.setExtCrystalUse(true);
-
-  // Calibrating BNO055. Do not Disturb!
-  uint8_t cal, gyro, accel, mag = 0;
-  bno.getCalibration(&cal, &gyro, &accel, &mag);
-
-  Serial.print("Calibrating BNO055  ");
-  Serial.print(cal);
-  Serial.print("  ");
-  Serial.print(gyro);
-  Serial.print("  ");
-  Serial.print(accel);
-  Serial.print("  ");
-  Serial.println(mag);
-
-  while (cal != 3)
-  {
-    bno.getCalibration(&cal, &gyro, &accel, &mag);
-    Serial.print("Calibrating BNO055  ");
-    Serial.print(cal);
-    Serial.print("  ");
-    Serial.print(gyro);
-    Serial.print("  ");
-    Serial.print(accel);
-    Serial.print("  ");
-    Serial.println(mag);
-    delay(1000);
-  }
   
-  // Sensors Initialize Test Gimbal
-  tone(PIEZO,TONE_SUCCESS);
-  digitalWrite(LED_GREEN,HIGH);
-
-  testGimbal();
-
-  // Ready to Arm
-  // noTone(PIEZO);
-  // delay (500);
-  // tone(PIEZO,TONE_SUCCESS, 500);
-  // delay (1000);
-
   armTimer = 0;
   bool armTimerPrintFlag = false;
   
@@ -156,7 +113,6 @@ void setup(void)
       if (armTimer > (SECONDS_TO_ARM * 1000)) 
       { // Countdown finished. Rocket has been armed
         Serial.println("Rocket armed");
-        tone(PIEZO,TONE_SUCCESS,1000);
         delay(1000);
         break;
       }
@@ -182,224 +138,15 @@ void setup(void)
   Serial.println("Rocket armed, why are you still looking at serial!?");
   digitalWrite(LED_GREEN,LOW);
   digitalWrite(LED_RED,HIGH);
-  
-  tone(PIEZO, TONE_SUCCESS, 500);
-  delay(500);
-  tone(PIEZO, TONE_VICTORY, 250);
-  delay(250);
 
-  PIDTimer = 0;
+  pulse.begin(tick, 10000);
   
 }
 
 void loop(void)
 {
-
-  double i;
-  double xy[2];
-  
-  getOrient(&i, xy);
-
-  double a = PID(i - targetInclination);
-
-  angle2Servo(a, xy);
-  /*
-  Serial.print("Inclination: ");
-  Serial.print(i);
-  Serial.print("PID Out: ");
-  Serial.print(a);
-  Serial.print("X Comp: ");
-  Serial.print(xy[0]);
-  Serial.print("Y Comp: ");
-  Serial.println(xy[1]);
-  */
-  if (LEDBlink(LED_GREEN, DUTY_CYCLE, LED_TIME_ON))
+  if (logBuff())
   {
-    if (!dutyCyclePrintFlag)
-    {
-      Serial.print("Inclination: ");
-      Serial.print(i);
-      Serial.print("PID Out: ");
-      Serial.print(a);
-      Serial.print("X Comp: ");
-      Serial.print(xy[0]);
-      Serial.print("Y Comp: ");
-      Serial.println(xy[1]);
-      dutyCyclePrintFlag = true;
-    }
-  } else 
-  {
-    dutyCyclePrintFlag = false;
+    while(1);
   }
-  
-  LEDBlink(LED_RED, DUTY_CYCLE, LED_TIME_ON);
-
-}
-
-/* Using quaternion to euler XZX conversion.
-* Get inclination through the 2nd rotation
-* Get orientation of servos from 3rd rotation
-* implementation as seen in MATLAB qparts2feul.m
-*/
-void getOrient(double *i, double xy[2])
-{
-  imu::Vector<3> g = bno.getVector(Adafruit_BNO055::VECTOR_GRAVITY);
-  imu::Quaternion quat = bno.getQuat();
-
-  double grav[3] = {g.x(), g.y(), g.z()};
-  double q[] = {quat.w(), quat.x(), quat.y(), quat.z()};
-
-  // Inclination: angle from upwards x-axis
-  // we want this to be 0, Use PID to do so
-  *i = acos(2 * (q[0]*q[0] + q[3]*q[3]) - 1);
-
-  double w = -atan2(2 * (q[0] * q[2] - q[1] * q[3]), 2 * (q[0] * q[1] + q[2] * q[3]));
-
-  xy[0] = -sin(w);
-  xy[1] = cos(w);
-  
-//  // other code relies on xy being a unit vector.
-//
-//  double gxy = sqrt(grav[0]*grav[0] + grav[1]*grav[1]);
-//  if (gxy > 0)
-//  {
-//    xy[0] = grav[0]/gxy;
-//    xy[1] = grav[1]/gxy;
-//  }
-//  else 
-//  {
-//    xy[0] = 0;
-//    xy[1] = 0;
-//  }
-
-}
-
-/*
- * Returns Adjusted absolute angle for servo.
- * Input i is current inclination (Rad)
- */
-
-double PID(double e)
-{
-  unsigned long dt = PIDTimer;
-  
-  errorSum += e * dt / 1000;
-  
-  double out = P * e + D * ((e - errorLast)/dt);
-  
-  errorLast = e;
-  PIDTimer = 0;
-
-  return out;
-}
-
-/*
- * Given wanted absolute angle (Rad) and roll (Rad), 
- * calculates needed angle for servos and transmit it to them
- */
-
-void angle2Servo(double a, double xy[2])
-{
-  if (a == 0)
-  { // To protect against div by 0 errors
-    // Center Servos
-    servoX.writeMicroseconds(1500);
-    servoY.writeMicroseconds(1500);
-    return;
-  }
-  
-  double angle = min(a, MAX_GIMBAL_ANGLE / RAD_TO_DEG);
-
-  double z = 1/tan(angle);
-  
-  double servoXRad = atan2(xy[0], z) / SERVO_TO_GIMBAL;
-  double servoYRad = atan2(xy[1], z) / SERVO_TO_GIMBAL;
-
-  double servoXMicro = map(servoXRad, -PI/3, PI/3, 900, 2100);
-  double servoYMicro = map(servoYRad, -PI/3, PI/3, 900, 2100);
-
-  if (abs(servoXMicro - lastServoWrite[0]) > 100)
-  {
-    servoXMicro = lastServoWrite[0];
-  }
-  if (abs(servoYMicro - lastServoWrite[1]) > 100)
-  {
-    servoYMicro = lastServoWrite[1];
-  }
-/*
-  Serial.print("ServoXMicro: ");
-  Serial.print(servoXMicro);
-  Serial.print("ServoYMicro: ");
-  Serial.print(servoYMicro);
-  Serial.print("Angle: ");
-  Serial.print(angle);
-  Serial.print("X Comp: ");
-  Serial.print(xy[0]);
-  Serial.print("Y Comp: ");
-  Serial.println(xy[1]);
-*/
-  servoX.writeMicroseconds(servoXMicro);
-  servoY.writeMicroseconds(servoYMicro);
-
-  lastServoWrite[0] = servoXMicro;
-  lastServoWrite[1] = servoYMicro;
-}
-/*
- * Test routine to make sure gimbal is functioning within range
- */
-void testGimbal()
-{
-  // center gimbal
-  double xy[2] = {0, 0};
-  
-  angle2Servo(0, xy);
-
-  double wMax = PI * 2;
-  double aMax = MAX_GIMBAL_ANGLE / RAD_TO_DEG;
-  double w_to_a = aMax / wMax;
-
-  // Spiral Outwards
-  for (float w = 0; w < wMax; w += .01)
-  {
-    xy[0] = cos(w);
-    xy[1] = sin(w);
-    angle2Servo(w * w_to_a, xy);
-    delay(1);
-  }
-
-  // One full rotation at max angle
-  for (float w = 0; w < wMax; w += .01)
-  {
-    xy[0] = cos(w);
-    xy[1] = sin(w);
-    angle2Servo(aMax, xy);
-    delay(1);
-  }
-
-  // Spiral Inwards
-  for (float w = 0; w < wMax; w += .01)
-  {
-    xy[0] = cos(w);
-    xy[1] = sin(w);
-    angle2Servo(aMax - (w * w_to_a), xy);
-    delay(1);
-  }
-
-  // Re-Center gimbal
-  angle2Servo(0, xy);
-}
-
-int LEDBlink(int LED, unsigned int dutyCycle, float ratio)
-{
-  
-  if (PROGRAM_TIME % (dutyCycle) <= (dutyCycle) * ratio)
-  { // If at time during cycle where LED should be on.
-    digitalWrite(LED, HIGH);
-    return 1;
-  } else
-  {
-    digitalWrite(LED, LOW);
-    return 0;
-  }
-  
 }
