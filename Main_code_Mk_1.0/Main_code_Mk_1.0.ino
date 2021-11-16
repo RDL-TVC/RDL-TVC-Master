@@ -25,6 +25,8 @@ float groundAltitude = 0;
 float avgVoltage = 0;
 
 const int chipSelect = BUILTIN_SDCARD;
+File flightLog;
+String dataString;
 
 Adafruit_BMP3XX bmp;
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
@@ -52,6 +54,20 @@ void setup() {
   Serial.begin(115200);
   Serial.printf("Begin test:\n");
 
+  //If the SD card does not function in ground-idle turn lights on, buzz, and freeze
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed or not present");
+    digitalWrite(gLED,HIGH);
+    digitalWrite(rLED,HIGH);
+    tone(BUZZER,5000,10000)
+    while(true){}
+  }
+
+  //Opens the text file on the SD card and creates the data string for logging purposes
+  Serial.println("SD card initialized");
+  dataFile = SD.open("flightLog.txt", O_RDWR | O_CREAT | O_TRUNC);
+  dataString = "";
+  
   //Ensure indicators are off
   digitalWrite(gLED,LOW);
   digitalWrite(rLED,LOW);
