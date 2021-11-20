@@ -98,8 +98,9 @@ bool logInit()
 bool servoInit()
 {
   // Initialise Servos
-  servoX.attach(SERVO_PIN_X);
-  servoY.attach(SERVO_PIN_Y);
+  analogWriteResolution(SERVO_RESOLUTION);
+  analogWriteFrequency(SERVO_PIN_X, SERVO_FREQUENCY);
+  analogWriteFrequency(SERVO_PIN_Y, SERVO_FREQUENCY);
 
   testGimbal();
   return true;
