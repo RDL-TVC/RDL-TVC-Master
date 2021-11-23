@@ -4,7 +4,7 @@
  * Input i is current inclination (Rad)
  */
 
-double PID(double e)
+double PID(double e, unsigned long dt)
 {
   double d = D * ((e - errorLast)/(dt));
   double p = P * e;
@@ -154,7 +154,6 @@ void PIDThread()
 {
   while (1){
     // Run PID on call
-    unsigned long timeNow = millis();
     imu::Quaternion quat = bno.getQuat(); // Interrupts need to be on here to get the serial communication hopefully they are.
   
     double q[4] = {quat.w(), quat.x(), quat.y(), quat.z()};
@@ -166,9 +165,16 @@ void PIDThread()
     double w = -atan2(2 * (q[0] * q[2] - q[1] * q[3]), 2 * (q[0] * q[1] + q[2] * q[3]));
 
     double xy[2] = {-sin(w), cos(w)};
-
-    double a = PID(i - targetInclination);
-
+    
+    unsigned long dt = millis() - timeLast;
+    timeLast = millis();
+    
+    double a = PID(i - targetInclination, dt);
+    if (dt > 12){
+      //Serial.print("Last PID Completion: ");
+      //Serial.println(dt);
+    }
+    
     if (a < 0)
     {
       a = abs(a);
@@ -179,10 +185,9 @@ void PIDThread()
     angle2Servo(a, xy);
     
     char str[100];
-    sprintf(str, "%10lu,% 1.8f,% 1.8f,% 1.8f,% 1.8f,% 4d,% 4d\n", millis(), q[0], q[1], q[2], q[3], lastServoWrite[0], lastServoWrite[1]);
+    sprintf(str, "%10lu,% 1.8f,% 1.8f,% 1.8f,% 1.8f,% 4d,% 4d\n", timeLast, q[0], q[1], q[2], q[3], lastServoWrite[0], lastServoWrite[1]);
     rb.memcpyIn(str, 72);
-    Serial.print("Last PID Completion: ");
-    Serial.println(millis());
+    threads.delay(10);
   }
   
 }

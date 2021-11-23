@@ -52,7 +52,6 @@ const float LED_TIME_ON = .05; // LED will be on for this fraction of duty cycle
 const double P = 0.3; // 0.1;
 const double I = 0; // given that inclination is always positive, this term will only accumulate (should not use for this controller)
 const double D = 0;
-const int dt = 10; // milliseconds between calls
 
 const char LOG_FILENAME[14] = "threadlog.csv";
 const unsigned long MAX_TIME = 1000 * 3600;
@@ -95,7 +94,7 @@ void setup(void)
   { // Something failed to intialize
     while(1);
   }
-  
+  /*
   armTimer = 0;
   bool armTimerPrintFlag = false;
   
@@ -138,14 +137,14 @@ void setup(void)
     }
     
   }
-
+  */
   // Rocket is now armed. Stay away!
   Serial.println("Rocket armed, why are you still looking at serial!?");
   digitalWrite(LED_GREEN,LOW);
   digitalWrite(LED_RED,HIGH);
 
   //pulse.begin(tick, dt * 1000);
-  threads.setDefaultTimeSlice(10);
+  //threads.setDefaultTimeSlice(10);
   threads.addThread(PIDThread);
   //threads.addThread(logThread);
   //threads.setSliceMillis(10);
@@ -153,7 +152,8 @@ void setup(void)
 }
 
 void loop(void)
-{/*
+{
+  long unsigned timeNow = millis();
   size_t n = rb.bytesUsed();
   if ((n + file.curPosition()) > (LOG_FILE_SIZE - 20)) 
   {
@@ -178,10 +178,12 @@ void loop(void)
       return;
     } else{
       file.sync();
-      //Serial.print("Last File Write: ");
-      //Serial.println(millis());
-      //Serial.print("Bytes Used In Buffer: ");
-      //Serial.println(n);
+      /*
+      Serial.print("Last File Write: ");
+      Serial.println(millis() - timeNow);
+      Serial.print("Bytes Used In Buffer: ");
+      Serial.println(n);
+      */
     }
   }
   if (millis() > MAX_TIME) 
@@ -191,5 +193,7 @@ void loop(void)
     file.close();
     return;
   }
-  */
+  
+  threads.yield();
+  
 }
