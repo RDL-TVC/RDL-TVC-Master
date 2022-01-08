@@ -106,50 +106,6 @@ int LEDBlink(int LED, unsigned int dutyCycle, float ratio)
   
 }
 
-void logThread()
-{
-  while(1){
-    size_t n = rb.bytesUsed();
-    if ((n + file.curPosition()) > (LOG_FILE_SIZE - 20)) 
-    {
-      Serial.println("File full - quiting.");
-      file.truncate();
-      file.close();
-      return;
-    } if (n > maxUsed) 
-    {
-      maxUsed = n;
-    }
-    if (n >= 512 && !file.isBusy()) 
-    {
-      // Not busy only allows one sector before possible busy wait.
-      // Write one sector from RingBuf to file.
-      if (512 != rb.writeOut(512)) 
-      {
-        Serial.println("writeOut failed"); 
-        // Probably not the best call to give up whole program if writeout fails
-        file.truncate();
-        file.close();
-        return;
-      } else{
-        file.sync();  
-      }
-    }
-    if (millis() > MAX_TIME) 
-    {
-      Serial.println("Times Up - quitting.");
-      file.truncate();
-      file.close();
-      return;
-    }
-    Serial.print("Last File Write: ");
-    Serial.println(millis());
-    Serial.print("Bytes Used In Buffer: ");
-    Serial.println(n);
-    //threads.yield();
-  }
-}
-
 void PIDThread()
 {
   while (1){
