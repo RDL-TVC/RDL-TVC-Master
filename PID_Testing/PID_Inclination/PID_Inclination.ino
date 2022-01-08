@@ -49,9 +49,12 @@ const int LED_RED = 8;
 const int DUTY_CYCLE = 100; // Length of total LED duty cycle in millis
 const float LED_TIME_ON = .05; // LED will be on for this fraction of duty cycle
 
-const double P = 0.3; // 0.1;
-const double I = 0; // given that inclination is always positive, this term will only accumulate (should not use for this controller)
-const double D = 0;
+const double I_P = 0.3; // 0.1;
+const double I_I = 0; // given that inclination is always positive, this term will only accumulate (should not use for this controller)
+const double I_D = 0;
+
+const double W_D = 1.1;
+const double MAX_DW = PI / 100;
 
 const char LOG_FILENAME[14] = "threadlog.csv";
 const unsigned long MAX_TIME = 1000 * 3600;
@@ -59,7 +62,8 @@ const unsigned long LOG_FILE_SIZE = 72*MAX_TIME / 10 + 153 + 20;
 const int RING_BUF_CAPACITY = 72*200;
 
 // Defining Variables that carry from cycle to cycle
-volatile double errorLast = 0; // Rad
+volatile double iLast = 0; // Rad
+volatile double wLast = 0; // Rad
 volatile unsigned long timeLast = 0;
 volatile int lastServoWrite[2] = {1500, 1500};
 

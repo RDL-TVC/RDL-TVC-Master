@@ -1,26 +1,4 @@
 #define Serial ThreadClone(SerialXtra)
-/*
- * Returns Adjusted absolute angle for servo.
- * Input i is current inclination (Rad)
- */
-
-double PID(double e, unsigned long dt)
-{
-  double d = D * ((e - errorLast)/(dt));
-  double p = P * e;
-  double out = p + d;
-/*
-  Serial.print("PID P: ");
-  Serial.println(p);
-  Serial.print("PID D: ");
-  Serial.println(d);
-  Serial.print("PID Out: ");
-  Serial.println(out);
-*/
-  errorLast = e;
-
-  return out;
-}
 
 /*
  * Given wanted absolute angle (Rad) and roll (Rad), 
@@ -119,26 +97,36 @@ void PIDThread()
     double i = acos(2 * (q[0]*q[0] + q[3]*q[3]) - 1);
 
     double w = -atan2(2 * (q[0] * q[2] - q[1] * q[3]), 2 * (q[0] * q[1] + q[2] * q[3]));
-
-    double xy[2] = {-sin(w), cos(w)};
     
     unsigned long dt = millis() - timeLast;
-    timeLast = millis();
+    double iOut = I_P * i + I_D * ((i - iLast)/(dt));
+    iLast = i;
     
-    double a = PID(i - targetInclination, dt);
+    double wOut = w;
+    
+    if (w - wLast < MAX_DW){
+      wOut = w + W_D * (w - wLast);
+    }
+    
+    wLast = w;
+    
+    double xy[2] = {-sin(wOut), cos(wOut)};
+    
     if (dt > 12){
       //Serial.print("Last PID Completion: ");
       //Serial.println(dt);
     }
     
-    if (a < 0)
+    if (iOut < 0)
     {
-      a = abs(a);
+      iOut = abs(iOut);
       xy[0] = - xy[0];
       xy[1] = - xy[1];
     }
 
-    angle2Servo(a, xy);
+    angle2Servo(iOut, xy);
+    
+    timeLast = millis();
     
     char str[100];
     sprintf(str, "%10lu,% 1.8f,% 1.8f,% 1.8f,% 1.8f,% 4d,% 4d\n", timeLast, q[0], q[1], q[2], q[3], lastServoWrite[0], lastServoWrite[1]);
